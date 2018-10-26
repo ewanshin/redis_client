@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="hiredispp.cpp">
+      <Filter>hiredispp</Filter>
+    </ClCompile>
+    <ClCompile Include="net.c" />
+    <ClCompile Include="sds.c" />
+    <ClCompile Include="hiredis.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\hiredis\hiredispp.h">
+      <Filter>hiredispp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\hiredis\hiredis.h" />
+    <ClInclude Include="..\include\hiredis\net.h" />
+    <ClInclude Include="..\include\hiredis\sds.h" />
+    <ClInclude Include="..\include\hiredis\config.h" />
+    <ClInclude Include="..\include\hiredis\async.h" />
+    <ClInclude Include="..\include\hiredis\dict.h" />
+    <ClInclude Include="..\include\hiredis\fmacros.h" />
+    <ClInclude Include="..\include\hiredis\read.h" />
+    <ClInclude Include="..\include\hiredis\win32.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="hiredispp">
+      <UniqueIdentifier>{edec9478-18ba-4d9e-9500-845bd8d73446}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

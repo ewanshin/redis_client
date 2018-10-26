@@ -27,3 +27,6 @@
 *.exe
 *.out
 *.app
+lib/
+redis_client.v12.suo
+redis_client.sdf
