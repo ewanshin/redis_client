@@ -64,8 +64,9 @@ void CTestConcur::Test_GetS()
 
 void CTestConcur::Test_Get()
 {
-    struct timeval tv;
-    struct timezone tz;
+	//struct timeval tv;
+	//struct timezone tz;
+
     int nIndex = 1;
     int npc = 0;
     while (!m_bExit)
@@ -86,14 +87,20 @@ void CTestConcur::Test_Get()
         }
         else
         {
-            gettimeofday(&tv, &tz);
-            m_mutex.lock();
-            if (++npc > NUM_DEF)
-            {
-                if (nRet == RC_NO_RESOURCE)
-                    std::cout << "No resource: " << tv.tv_usec << std::endl;
-                else
-                    std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+			//gettimeofday(&tv, &tz);
+			m_mutex.lock();
+			if (++npc > NUM_DEF)
+			{
+				if (nRet == RC_NO_RESOURCE)
+				{
+					//std::cout << "No resource: " << tv.tv_usec << std::endl;
+					std::cout << "No resource: " << std::endl;
+				}
+				else
+				{
+					std::cout << "Get Failed: " << std::endl;
+					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+				}
                 npc = 0;
             }
             m_mutex.unlock();
@@ -107,11 +114,11 @@ void CTestConcur::Test_Get()
 
 void CTestConcur::Test_Set()
 {
-    int nCounter = 2;
-    int nIndex = 1;
-    int npc = 0;
-    struct timeval tv;
-    struct timezone tz;
+	int nCounter = 2;
+	int nIndex = 1;
+	int npc = 0;
+	//struct timeval tv;
+	//struct timezone tz;
     while (!m_bExit)
     {
         std::stringstream ssKey, ssVal;
@@ -130,14 +137,20 @@ void CTestConcur::Test_Set()
         }
         else
         {
-            gettimeofday(&tv, &tz);
+            //gettimeofday(&tv, &tz);
             m_mutex.lock();
             if (++npc > NUM_DEF)
             {
-                if (nRet == RC_NO_RESOURCE)
-                    std::cout << "No resource: " << tv.tv_usec << std::endl;
-                else
-                    std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+				if (nRet == RC_NO_RESOURCE)
+				{
+					std::cout << "No resource: " << std::endl;
+					//std::cout << "No resource: " << tv.tv_usec << std::endl;
+				}
+				else
+				{
+					std::cout << "Get Failed: " << std::endl;
+					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+				}
                 npc = 0;
             }
             m_mutex.unlock();

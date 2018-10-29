@@ -30,3 +30,5 @@
 lib/
 redis_client.v12.suo
 redis_client.sdf
+Debug/
+*.opensdf

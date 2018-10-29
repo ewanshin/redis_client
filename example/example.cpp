@@ -5,6 +5,13 @@
 
 #include "hiredis/hiredis.h"
 #include "TestBase.hpp"
+#include "TestGeneric.hpp"
+#include "TestString.hpp"
+#include "TestList.hpp"
+#include "TestSet.hpp"
+#include "TestHash.hpp"
+#include "TestZset.hpp"
+#include "TestConcur.hpp"
 #ifdef HIREDIS_WIN
 #define snprintf sprintf_s
 #endif
@@ -27,9 +34,9 @@ int main(void)
 		//if (!testKeys.StartTest(strHost))
 		//    break;
 
-		/*		CTestString testStr;
-		if (!testStr.StartTest(strHost))
-		break;*/
+		CTestString testStr;
+		if (!testStr.StartTest(strHost, port))
+			break;
 
 		//CTestList testList;
 		//if (!testList.StartTest(strHost))
@@ -43,9 +50,9 @@ int main(void)
 		//if (!testHash.StartTest(strHost))
 		//    break;
 
-		/*		CTestZset testZset;
-		if (!testZset.StartTest(strHost))
-		break;*/
+		CTestZset testZset;
+		if (!testZset.StartTest(strHost, port))
+			break;
 
 		//CTestConcur testConcur;
 		//if (!testConcur.StartTest(strHost))

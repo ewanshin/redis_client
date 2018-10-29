@@ -65,11 +65,11 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\$(Platform)</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)tmp\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)tmp\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\$(Platform)</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)tmp\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)tmp\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -88,12 +88,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(SolutionDir)include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)lib\$(Platform);$(LibraryPath)</LibraryPath>
-    <IntDir>$(SolutionDir)tmp\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(ProjectDir)tmp\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(SolutionDir)include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)lib\$(Platform);$(LibraryPath)</LibraryPath>
-    <IntDir>$(SolutionDir)tmp\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(ProjectDir)tmp\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(SolutionDir)include;$(IncludePath)</IncludePath>
@@ -184,10 +184,24 @@
     <ClCompile Include="example.cpp" />
     <ClCompile Include="TestBase.cpp" />
     <ClCompile Include="TestClient.cpp" />
+    <ClCompile Include="TestConcur.cpp" />
+    <ClCompile Include="TestGeneric.cpp" />
+    <ClCompile Include="TestHash.cpp" />
+    <ClCompile Include="TestList.cpp" />
+    <ClCompile Include="TestSet.cpp" />
+    <ClCompile Include="TestString.cpp" />
+    <ClCompile Include="TestZset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TestBase.hpp" />
     <ClInclude Include="TestClient.hpp" />
+    <ClInclude Include="TestConcur.hpp" />
+    <ClInclude Include="TestGeneric.hpp" />
+    <ClInclude Include="TestHash.hpp" />
+    <ClInclude Include="TestList.hpp" />
+    <ClInclude Include="TestSet.hpp" />
+    <ClInclude Include="TestString.hpp" />
+    <ClInclude Include="TestZset.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
