@@ -248,18 +248,28 @@ bool CTestString::Test_Mget()
     bool bSuccess = false;
     std::vector<std::string> vecKey;
     std::vector<std::string> vecVal;
-    vecKey.push_back("tk_str_1");
-    vecKey.push_back("tk_str_9");
-    vecKey.push_back("tk_str_10");
-    vecKey.push_back("tk_str_3");
-    vecKey.push_back("tk_str_8");
-    vecKey.push_back("tk_str_6");
-    vecKey.push_back("tk_list_1");
-    vecKey.push_back("tk_str_4");
-    if (m_redis.Mget(vecKey, &vecVal) == RC_SUCCESS && vecKey.size() == vecVal.size() &&
-        vecVal[2] == "" && vecVal[6] == "" && vecVal[0] == "value_1" && vecVal[3] == "value_3" &&
-        vecVal[5] == "value_6")
-        bSuccess = true;
+
+	if (true == m_redis.IsCluster())
+	{
+		std::cout << "CTestString::Test_Mget cluster mode not support" << std::endl;
+		bSuccess = true;
+	}
+	else
+	{
+		vecKey.push_back("tk_str_1");
+		vecKey.push_back("tk_str_9");
+		vecKey.push_back("tk_str_10");
+		vecKey.push_back("tk_str_3");
+		vecKey.push_back("tk_str_8");
+		vecKey.push_back("tk_str_6");
+		vecKey.push_back("tk_list_1");
+		vecKey.push_back("tk_str_4");
+		if (m_redis.Mget(vecKey, &vecVal) == RC_SUCCESS && vecKey.size() == vecVal.size() &&
+			vecVal[2] == "" && vecVal[6] == "" && vecVal[0] == "value_1" && vecVal[3] == "value_3" &&
+			vecVal[5] == "value_6")
+			bSuccess = true;
+
+	}
     return PrintResult("mget", bSuccess);
 }
 
@@ -269,28 +279,36 @@ bool CTestString::Test_Mset()
         return PrintResult("mset", false);
 
     bool bSuccess = false;
-    std::vector<std::string> vecKey;
-    std::vector<std::string> vecVal;
-    std::string strVal;
-    vecKey.push_back("tk_str_1");
-    vecKey.push_back("tk_str_2");
-    vecKey.push_back("tk_str_3");
-    vecKey.push_back("tk_str_4");
-    vecKey.push_back("tk_str_5");
-    vecKey.push_back("tk_str_6");
-    vecKey.push_back("tk_list_1");
-    vecVal.push_back("value_1");
-    vecVal.push_back("value_2");
-    vecVal.push_back("value_3");
-    vecVal.push_back("value_4");
-    vecVal.push_back("value_5");
-    vecVal.push_back("value_6");
-    vecVal.push_back("value_7");
-    if (m_redis.Mset(vecKey, vecVal) == RC_SUCCESS &&
-        m_redis.Get("tk_str_2", &strVal) == RC_SUCCESS && strVal == "value_2" &&
-        m_redis.Get("tk_str_4", &strVal) == RC_SUCCESS && strVal == "value_4" &&
-        m_redis.Get("tk_list_1", &strVal) == RC_SUCCESS && strVal == "value_7")
-        bSuccess = true;
+	if (true == m_redis.IsCluster())
+	{
+		std::cout << "CTestString::Test_Mset cluster mode not support" << std::endl;
+		bSuccess = true;
+	}
+	else
+	{
+		std::vector<std::string> vecKey;
+		std::vector<std::string> vecVal;
+		std::string strVal;
+		vecKey.push_back("tk_str_1");
+		vecKey.push_back("tk_str_2");
+		vecKey.push_back("tk_str_3");
+		vecKey.push_back("tk_str_4");
+		vecKey.push_back("tk_str_5");
+		vecKey.push_back("tk_str_6");
+		vecKey.push_back("tk_list_1");
+		vecVal.push_back("value_1");
+		vecVal.push_back("value_2");
+		vecVal.push_back("value_3");
+		vecVal.push_back("value_4");
+		vecVal.push_back("value_5");
+		vecVal.push_back("value_6");
+		vecVal.push_back("value_7");
+		if (m_redis.Mset(vecKey, vecVal) == RC_SUCCESS &&
+			m_redis.Get("tk_str_2", &strVal) == RC_SUCCESS && strVal == "value_2" &&
+			m_redis.Get("tk_str_4", &strVal) == RC_SUCCESS && strVal == "value_4" &&
+			m_redis.Get("tk_list_1", &strVal) == RC_SUCCESS && strVal == "value_7")
+			bSuccess = true;
+	}
     return PrintResult("mset", bSuccess);
 }
 

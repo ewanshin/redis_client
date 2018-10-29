@@ -36,17 +36,26 @@ bool CTestZset::Test_Zcard()
 
 bool CTestZset::Test_Zcount()
 {
-    if (!InitStringEnv(1, 1) || !InitZsetEnv(10, 9))
-        return PrintResult("zcount", false);
+	if (!InitStringEnv(1, 1) || !InitZsetEnv(10, 9))
+		return PrintResult("zcount", false);
 
-    bool bSuccess = false;
-    long nVal;
-    if (m_redis.Zcount("tk_str_1", 1, 3, &nVal) == RC_REPLY_ERR &&
-        m_redis.Zcount("tk_zset_3", 1.1, 1.9, &nVal) == RC_SUCCESS && nVal == 0 &&
-        m_redis.Zcount("tk_zset_3", 1.2, 5.9, &nVal) == RC_SUCCESS && nVal == 2 &&
-        m_redis.Zcount("tk_zset_9", 3.2, 6.7, &nVal) == RC_SUCCESS && nVal == 3 &&
-        m_redis.Zcount("tk_zset_10", 3.2, 6.7, &nVal) == RC_SUCCESS && nVal == 0)
-        bSuccess = true;
+	bool bSuccess = false;
+	if (true == m_redis.IsCluster())
+	{
+		std::cout << "CTestZset::Test_Zcount cluster mode not support" << std::endl;
+		return true;
+	}
+	else
+	{
+		long nVal;
+		if (m_redis.Zcount("tk_str_1", 1, 3, &nVal) == RC_REPLY_ERR &&
+			m_redis.Zcount("tk_zset_3", 1.1, 1.9, &nVal) == RC_SUCCESS && nVal == 0 &&
+			m_redis.Zcount("tk_zset_3", 1.2, 5.9, &nVal) == RC_SUCCESS && nVal == 2 &&
+			m_redis.Zcount("tk_zset_9", 3.2, 6.7, &nVal) == RC_SUCCESS && nVal == 3 &&
+			m_redis.Zcount("tk_zset_10", 3.2, 6.7, &nVal) == RC_SUCCESS && nVal == 0)
+			bSuccess = true;
+
+	}
     return PrintResult("zcount", bSuccess);
 }
 
@@ -351,15 +360,24 @@ bool CTestZset::Test_Zrangewithscore()
         return PrintResult("zrangewithscore", false);
 
     bool bSuccess = false;
-    std::map<std::string, std::string> mapVal;
-    if (//m_redis.Zrangewithscore("tk_str_1", 0, -1, &mapVal) == RC_REPLY_ERR &&
-        //m_redis.Zrangewithscore("tk_zset_5", 0, -1, &mapVal) == RC_SUCCESS && mapVal.empty() &&
-        m_redis.Zrangewithscore("tk_zset_4", 0, -1, &mapVal) == RC_SUCCESS && mapVal.size() == 4 &&
-        IsPairInMap(std::string("value_1"), std::string("1"), mapVal) &&
-        IsPairInMap(std::string("value_2"), std::string("2"), mapVal) &&
-        IsPairInMap(std::string("value_3"), std::string("3"), mapVal) &&
-        IsPairInMap(std::string("value_4"), std::string("4"), mapVal))
-        bSuccess = true;
+	if (true == m_redis.IsCluster())
+	{
+		std::cout << "CTestZset::Test_Zrangewithscore cluster mode not support" << std::endl;
+		bSuccess = true;
+	}
+	else
+	{
+		std::map<std::string, std::string> mapVal;
+		if (//m_redis.Zrangewithscore("tk_str_1", 0, -1, &mapVal) == RC_REPLY_ERR &&
+			//m_redis.Zrangewithscore("tk_zset_5", 0, -1, &mapVal) == RC_SUCCESS && mapVal.empty() &&
+			m_redis.Zrangewithscore("tk_zset_4", 0, -1, &mapVal) == RC_SUCCESS && mapVal.size() == 4 &&
+			IsPairInMap(std::string("value_1"), std::string("1"), mapVal) &&
+			IsPairInMap(std::string("value_2"), std::string("2"), mapVal) &&
+			IsPairInMap(std::string("value_3"), std::string("3"), mapVal) &&
+			IsPairInMap(std::string("value_4"), std::string("4"), mapVal))
+			bSuccess = true;
+
+	}
     return PrintResult("zrangewithscore", bSuccess);
 }
 
