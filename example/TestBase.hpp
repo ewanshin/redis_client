@@ -7,7 +7,7 @@ class CTestBase : public CTestClient
 {
 public:
     CTestBase();
-    bool StartTest(const std::string &strHost, unsigned int port);
+    bool StartTest(const std::string &strHost, int port);
 
 private:
     bool Test_Get();

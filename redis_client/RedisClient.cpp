@@ -1,7 +1,9 @@
 #include "redis_client/RedisClient.hpp"
-
-CSafeLock::CSafeLock(pthread_rwlock_t *pLock)
-	: m_pLock(pLock), 
+#include <WinSock2.h>
+//CSafeLock::CSafeLock(pthread_rwlock_t *pLock)
+CSafeLock::CSafeLock(std::mutex *mutex)
+	: m_mutex(mutex),
+//	: m_pLock(lock),
 	m_bLocked(false) 
 {
 }
@@ -13,27 +15,35 @@ CSafeLock::~CSafeLock()
 
 bool CSafeLock::ReadLock() 
 {
-	return (m_bLocked = (pthread_rwlock_rdlock(m_pLock) == 0)); 
+	m_mutex->lock();
+	return true;
+	//return (m_bLocked = (pthread_rwlock_rdlock(m_pLock) == 0)); 
+
 }
 
 bool CSafeLock::WriteLock() 
 {
-	return (m_bLocked = (pthread_rwlock_wrlock(m_pLock) == 0)); 
+	m_mutex->lock();
+	return true;
+	//return (m_bLocked = (pthread_rwlock_wrlock(m_pLock) == 0)); 
 }
 
 bool CSafeLock::TryReadLock()
 {
-	return (m_bLocked = (pthread_rwlock_tryrdlock(m_pLock) == 0)); 
+	return m_mutex->try_lock();
+	//return (m_bLocked = (pthread_rwlock_tryrdlock(m_pLock) == 0)); 
 }
 
 bool CSafeLock::TryWriteLock()
 {
-	return (m_bLocked = (pthread_rwlock_trywrlock(m_pLock) == 0)); 
+	return m_mutex->try_lock();
+	//return (m_bLocked = (pthread_rwlock_trywrlock(m_pLock) == 0)); 
 }
 
 void CSafeLock::Unlock() 
 {
-	if (m_bLocked) pthread_rwlock_unlock(m_pLock); 
+	return m_mutex->unlock();
+	//if (m_bLocked) pthread_rwlock_unlock(m_pLock); 
 }
 
 void CSafeLock::lock()
@@ -721,8 +731,9 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
     if (m_pContext)
         redisFree(m_pContext);
 
-    struct timeval tmTimeout = {nTimeout, 0};
+    struct timeval tmTimeout = {static_cast<long>(nTimeout), 0};
     m_pContext = redisConnectWithTimeout(strHost.c_str(), nPort, tmTimeout);
+	m_pContext = redisConnect(strHost.c_str(), nPort);
     if (!m_pContext || m_pContext->err)
     {
         if (m_pContext)
@@ -733,7 +744,7 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
         return false;
     }
 
-    redisSetTimeout(m_pContext, tmTimeout);
+    //redisSetTimeout(m_pContext, tmTimeout);
     m_nUseTime = time(nullptr);
     return true;
 }
@@ -762,7 +773,7 @@ bool CRedisConnection::Reconnect()
 CRedisServer::CRedisServer(const std::string &strHost, int nPort, int nTimeout, int nConnNum)
     : m_strHost(strHost), m_nPort(nPort), m_nCliTimeout(nTimeout), m_nSerTimeout(0), m_nConnNum(nConnNum)
 {
-    SetSlave(strHost, nPort);
+//	SetSlave(strHost, nPort);
     Initialize();
 }
 
@@ -861,7 +872,7 @@ CRedisClient::CRedisClient()
     pthread_rwlockattr_setkind_np(&m_rwAttr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&m_rwLock, &m_rwAttr);
 #else
-    pthread_rwlock_init(&m_rwLock, nullptr);
+    //pthread_rwlock_init(&m_rwLock, nullptr);
 #endif
 }
 
@@ -870,7 +881,8 @@ CRedisClient::~CRedisClient()
     m_bValid = false;
     m_bExit = true;
     {
-		CSafeLock safeLock(&m_rwLock);
+		//CSafeLock safeLock(&m_rwLock);
+		CSafeLock safeLock(&m_mutex);
 		safeLock.WriteLock();
 		m_condAny.notify_all();
     }
@@ -884,7 +896,7 @@ CRedisClient::~CRedisClient()
 #if defined(linux) || defined(__linux) || defined(__linux__)
     pthread_rwlockattr_destroy(&m_rwAttr);
 #endif
-	pthread_rwlock_destroy(&m_rwLock);
+	//pthread_rwlock_destroy(&m_rwLock);
 }
 
 bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nTimeout, int nConnNum)
@@ -927,7 +939,8 @@ void CRedisClient::operator()()
     while (!m_bExit)
     {
         {
-			CSafeLock safeLock(&m_rwLock);
+			//CSafeLock safeLock(&m_rwLock);
+			CSafeLock safeLock(&m_mutex);
 			safeLock.WriteLock();
 			if (m_bValid)
 				m_condAny.wait(safeLock);
@@ -1942,7 +1955,7 @@ int CRedisClient::ExecuteImpl(const std::string &strCmd, int nSlot, TFuncFetch f
     int nRet = Execute(pRedisCmd);
 	if (nRet == RC_SUCCESS)
 	{
-		//std::cout << "CRedisClient::ExecuteImpl [command:" << strCmd.c_str() << "][slot:" << std::to_string(nSlot) << "]" << std::endl;
+		std::cout << "CRedisClient::ExecuteImpl [command:" << strCmd.c_str() << "][slot:" << std::to_string(nSlot) << "]" << std::endl;
 		nRet = pRedisCmd->FetchResult(funcFetch);
 	}
 	else
@@ -2037,7 +2050,8 @@ bool CRedisClient::LoadClusterSlots()
 bool CRedisClient::WaitForRefresh()
 {
     {
-		CSafeLock safeLock(&m_rwLock);
+		//CSafeLock safeLock(&m_rwLock);
+		CSafeLock safeLock(&m_mutex);
 		if (safeLock.TryReadLock())
 			m_condAny.notify_all();
     }
@@ -2080,7 +2094,8 @@ int CRedisClient::Execute(CRedisCommand *pRedisCmd)
 
 int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 {
-	CSafeLock safeLock(&m_rwLock);
+	//CSafeLock safeLock(&m_rwLock);
+	CSafeLock safeLock(&m_mutex);
 	if (!safeLock.ReadLock() || !m_bValid)
 		return RC_RQST_ERR;
 

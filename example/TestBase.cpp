@@ -4,11 +4,11 @@ CTestBase::CTestBase()
 {
 }
 
-bool CTestBase::StartTest(const std::string &strHost, unsigned int port)
+bool CTestBase::StartTest(const std::string &strHost, int port)
 {
 	bool bSuccess = false;
 	std::cout << "start to test base command" << std::endl;
-	if (!m_redis.Initialize(strHost, port, 2, 10))
+	if (!m_redis.Initialize(strHost, port, 5, 10))
 		std::cout << "initialize redis client failed host:" << strHost << std::endl;
 	else
 	{
@@ -78,7 +78,7 @@ bool CTestBase::Test_Lpush()
 	bool bSuccess = false;
 	long nVal;
 	std::vector<std::string> vecVal;
-	if (m_redis.Lpush("tk_str_1", "value_1", &nVal) == RC_REPLY_ERR &&
+	if (m_redis.Lpush("tk_list_1", "value_1", &nVal) == RC_REPLY_ERR &&
 		m_redis.Lpush("tk_list_1", "value_2", &nVal) == RC_SUCCESS && nVal == 2 &&
 		m_redis.Lrange("tk_list_1", 0, -1, &vecVal) == RC_SUCCESS && vecVal.size() == 2 &&
 		vecVal[0] == "value_2" && vecVal[1] == "value_1" &&

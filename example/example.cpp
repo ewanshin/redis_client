@@ -16,13 +16,15 @@
 #define snprintf sprintf_s
 #endif
 
-const int PORT = 30001;
+const int PORT = 17001;
 const char *const AUTH_CMD = NULL;
 
 int main(void) 
 {
-	std::string strHost = "10.75.17.135";
-	unsigned int port = 30001;
+	//std::string strHost = "10.75.17.135";
+	std::string strHost = "10.113.113.36";
+	//unsigned int port = 30001;
+	int port = 17001;
 
 	while (1)
 	{

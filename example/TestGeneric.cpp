@@ -1,4 +1,5 @@
 #include "TestGeneric.hpp"
+#include <WinSock2.h>
 
 CTestGeneric::CTestGeneric()
 {
@@ -59,7 +60,7 @@ bool CTestGeneric::Test_Dump()
         m_redis.Ttl("tk_list_3", &nVal) == RC_SUCCESS && nVal >=8)
         bSuccess = true;
 
-    PrintResult("dump", bSuccess);
+    //PrintResult("dump", bSuccess);
     return PrintResult("restore", bSuccess);
 }
 
@@ -89,11 +90,11 @@ bool CTestGeneric::Test_Expire()
         m_redis.Expire("tk_str_1", 5, &nExpVal) == RC_SUCCESS && nExpVal == 1)
     {
         //sleep(3);
-		::Sleep(3000);
+		//::Sleep(3000);
         if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
         {
             //sleep(3);
-			::Sleep(3000);
+			//::Sleep(3000);
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 0)
                 bSuccess = true;
         }
@@ -242,11 +243,11 @@ bool CTestGeneric::Test_Pttl()
         m_redis.Pexpire("tk_str_1", 7800) == RC_SUCCESS)
     {
         //sleep(3);
-		::Sleep(3000);
+		//::Sleep(3000);
         if (m_redis.Pttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 4000 && nVal < 4800)
         {
             //sleep(2);
-			::Sleep(2000);
+			//::Sleep(2000);
             if (m_redis.Pttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 2000 && nVal < 2800)
                 bSuccess = true;
         }

@@ -7,7 +7,7 @@ class CTestZset : public CTestClient
 {
 public:
     CTestZset();
-	bool StartTest(const std::string &strHost, unsigned int port);
+	bool StartTest(const std::string &strHost, int port);
 
     bool Test_Zcard();
     bool Test_Zcount();

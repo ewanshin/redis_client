@@ -4,7 +4,7 @@ CTestZset::CTestZset()
 {
 }
 
-bool CTestZset::StartTest(const std::string &strHost, unsigned int port)
+bool CTestZset::StartTest(const std::string &strHost, int port)
 {
     bool bSuccess = false;
     std::cout << "start to test zset command" << std::endl;

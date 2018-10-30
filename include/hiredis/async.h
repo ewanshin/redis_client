@@ -102,6 +102,7 @@ typedef struct redisAsyncContext {
 
 /* Functions that proxy to hiredis */
 redisAsyncContext *redisAsyncConnect(const char *ip, int port);
+redisAsyncContext *redisAsyncConnectBind(const char *ip, int port, const char *source_addr);
 redisAsyncContext *redisAsyncConnectUnix(const char *path);
 int redisAsyncSetConnectCallback(redisAsyncContext *ac, redisConnectCallback *fn);
 int redisAsyncSetDisconnectCallback(redisAsyncContext *ac, redisDisconnectCallback *fn);
@@ -111,6 +112,10 @@ void redisAsyncFree(redisAsyncContext *ac);
 /* Handle read/write events */
 void redisAsyncHandleRead(redisAsyncContext *ac);
 void redisAsyncHandleWrite(redisAsyncContext *ac);
+#ifdef _WIN32
+int redisAsyncHandleWritePrep(redisAsyncContext *ac);
+int redisAsyncHandleWriteComplete(redisAsyncContext *ac, int written);
+#endif
 
 /* Command functions for an async context. Write the command to the
  * output buffer and register the provided callback. */

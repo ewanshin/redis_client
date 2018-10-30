@@ -14,7 +14,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <algorithm>
-#include <pthread/pthread.h>
+//#include <pthread/pthread.h>
 #include <string.h>
 
 #define RC_RESULT_EOF       5
@@ -41,7 +41,8 @@ typedef std::function<int (int, redisReply *)> TFuncConvert;
 class CSafeLock
 {
 public:
-	CSafeLock(pthread_rwlock_t *pLock);
+	//CSafeLock(pthread_rwlock_t *pLock);
+	CSafeLock(std::mutex* mutex);
 	~CSafeLock();
 
 	bool ReadLock();
@@ -62,7 +63,8 @@ public:
 	//inline void unlock() { Unlock(); }
 
 private:
-	pthread_rwlock_t *m_pLock;
+	//pthread_rwlock_t *m_pLock;
+	std::mutex* m_mutex;
 	bool m_bLocked;
 };
 
@@ -424,7 +426,8 @@ private:
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
 #endif
-	pthread_rwlock_t m_rwLock;
+	//pthread_rwlock_t m_rwLock;
+	std::mutex m_mutex;
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 };
