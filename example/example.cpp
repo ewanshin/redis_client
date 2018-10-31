@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-//#include <string.h>
 #include <string>
 
-#include "hiredis/hiredis.h"
+#include <hiredis/hiredis.h>
 #include "TestBase.hpp"
 #include "TestGeneric.hpp"
 #include "TestString.hpp"
@@ -21,10 +20,10 @@ const char *const AUTH_CMD = NULL;
 
 int main(void) 
 {
-	//std::string strHost = "10.75.17.135";
-	std::string strHost = "10.113.113.36";
-	//unsigned int port = 30001;
-	int port = 17001;
+	std::string strHost = "10.75.17.135";
+	//std::string strHost = "10.113.113.36";
+	unsigned int port = 30001;
+	//int port = 17001;
 
 	while (1)
 	{

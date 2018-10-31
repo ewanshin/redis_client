@@ -323,34 +323,26 @@ bool CTestString::Test_Psetex()
     {
         if (m_redis.Psetex("tk_str_1", 4700, "new_1") != RC_SUCCESS)
             break;
-		//::Sleep(3000);
-        //sleep(3);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_1", &strVal) != RC_SUCCESS || strVal != "new_1")
             break;
-        //sleep(2);
-		//::Sleep(2000);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
         if (m_redis.Get("tk_str_1", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
-
         if (m_redis.Psetex("tk_str_2", 4800, "new_2") != RC_SUCCESS)
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_2", &strVal) != RC_SUCCESS || strVal != "new_2")
             break;
-        //sleep(2);
-		//::Sleep(2000);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
         if (m_redis.Get("tk_str_2", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
-
         if (m_redis.Psetex("tk_list_1", 4900, "new_3") != RC_SUCCESS)
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_list_1", &strVal) != RC_SUCCESS || strVal != "new_3")
             break;
-        //sleep(2);
-		//::Sleep(2000);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
         if (m_redis.Get("tk_list_1", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
 
@@ -389,34 +381,26 @@ bool CTestString::Test_Setex()
     {
         if (m_redis.Setex("tk_str_1", 5, "new_1") != RC_SUCCESS)
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_1", &strVal) != RC_SUCCESS || strVal != "new_1")
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_1", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
-
         if (m_redis.Setex("tk_str_2", 5, "new_2") != RC_SUCCESS)
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_2", &strVal) != RC_SUCCESS || strVal != "new_2")
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_str_2", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
-
         if (m_redis.Setex("tk_list_1", 5, "new_3") != RC_SUCCESS)
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_list_1", &strVal) != RC_SUCCESS || strVal != "new_3")
             break;
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Get("tk_list_1", &strVal) != RC_SUCCESS || !strVal.empty())
             break;
 

@@ -89,12 +89,10 @@ bool CTestGeneric::Test_Expire()
     if (m_redis.Expire("tk_str_2", 5, &nExpVal) == RC_SUCCESS && nExpVal == 0 &&
         m_redis.Expire("tk_str_1", 5, &nExpVal) == RC_SUCCESS && nExpVal == 1)
     {
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
         {
-            //sleep(3);
-			//::Sleep(3000);
+			std::this_thread::sleep_for(std::chrono::seconds(3));
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 0)
                 bSuccess = true;
         }
@@ -115,12 +113,10 @@ bool CTestGeneric::Test_Expireat()
     if (m_redis.Expireat("tk_str_2", nTime, &nExpVal) == RC_SUCCESS && nExpVal == 0 &&
         m_redis.Expireat("tk_str_1", nTime, &nExpVal) == RC_SUCCESS && nExpVal == 1)
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
         {
-            //sleep(3);
-			::Sleep(3000);
+			std::this_thread::sleep_for(std::chrono::seconds(3));
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 0)
                 bSuccess = true;
         }
@@ -168,12 +164,10 @@ bool CTestGeneric::Test_Persist()
     if (m_redis.Persist("tk_str_2", &nPerVal) == RC_SUCCESS && nPerVal == 0 &&
         m_redis.Expire("tk_str_1", 5) == RC_SUCCESS)
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Persist("tk_str_1", &nPerVal) == RC_SUCCESS && nPerVal == 1)
         {
-            //sleep(3);
-			::Sleep(3000);
+			std::this_thread::sleep_for(std::chrono::seconds(3));
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
                 bSuccess = true;
         }
@@ -192,12 +186,10 @@ bool CTestGeneric::Test_Pexpire()
     if (m_redis.Pexpire("tk_str_2", 5000, &nExpVal) == RC_SUCCESS && nExpVal == 0 &&
         m_redis.Pexpire("tk_str_1", 5000, &nExpVal) == RC_SUCCESS && nExpVal == 1)
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
         {
-            //sleep(3);
-			::Sleep(3000);
+			std::this_thread::sleep_for(std::chrono::seconds(3));
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 0)
                 bSuccess = true;
         }
@@ -218,12 +210,10 @@ bool CTestGeneric::Test_Pexpireat()
     if (m_redis.Pexpireat("tk_str_2", nTime, &nExpVal) == RC_SUCCESS && nExpVal == 0 &&
         m_redis.Pexpireat("tk_str_1", nTime, &nExpVal) == RC_SUCCESS && nExpVal == 1)
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 1)
         {
-            //sleep(2);
-			::Sleep(2000);
+			std::this_thread::sleep_for(std::chrono::seconds(2));
             if (m_redis.Exists("tk_str_1", &nExtVal) == RC_SUCCESS && nExtVal == 0)
                 bSuccess = true;
         }
@@ -242,12 +232,10 @@ bool CTestGeneric::Test_Pttl()
         m_redis.Pttl("tk_str_1", &nVal) == RC_SUCCESS && nVal == -1 &&
         m_redis.Pexpire("tk_str_1", 7800) == RC_SUCCESS)
     {
-        //sleep(3);
-		//::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Pttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 4000 && nVal < 4800)
         {
-            //sleep(2);
-			//::Sleep(2000);
+			std::this_thread::sleep_for(std::chrono::seconds(2));
             if (m_redis.Pttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 2000 && nVal < 2800)
                 bSuccess = true;
         }
@@ -294,8 +282,7 @@ bool CTestGeneric::Test_Rename()
         m_redis.Lrange("tk_list_2", 0, -1, &vecVal) == RC_SUCCESS &&
         vecVal.size() == 1 && vecVal[0] == "value_1")
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_list_2", &nVal) ==  RC_SUCCESS && nVal == 0)
             bSuccess = true;
     }
@@ -325,8 +312,7 @@ bool CTestGeneric::Test_Renamenx()
         m_redis.Lrange("tk_list_2", 0, -1, &vecVal) == RC_SUCCESS &&
         vecVal.size() == 1 && vecVal[0] == "value_1")
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Exists("tk_list_2", &nVal) ==  RC_SUCCESS && nVal == 0)
             bSuccess = true;
     }
@@ -349,12 +335,10 @@ bool CTestGeneric::Test_Ttl()
         m_redis.Ttl("tk_str_1", &nVal) == RC_SUCCESS && nVal == -1 &&
         m_redis.Expire("tk_str_1", 100) == RC_SUCCESS)
     {
-        //sleep(3);
-		::Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         if (m_redis.Ttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 95 && nVal < 98)
         {
-            //sleep(5);
-			::Sleep(5000);
+			std::this_thread::sleep_for(std::chrono::seconds(5));
             if (m_redis.Ttl("tk_str_1", &nVal) == RC_SUCCESS && nVal > 91 && nVal < 94)
                 bSuccess = true;
         }
