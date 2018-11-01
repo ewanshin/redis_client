@@ -14,6 +14,7 @@
 #ifdef HIREDIS_WIN
 #define snprintf sprintf_s
 #endif
+#include <spdlog/spdlog.h>
 
 const int PORT = 17001;
 const char *const AUTH_CMD = NULL;
@@ -27,17 +28,17 @@ int main(void)
 
 	while (1)
 	{
-		CTestBase testBase;
+/*		CTestBase testBase;
 		if (!testBase.StartTest(strHost, port))
-			break;
+			break;*/
 
 		//CTestGeneric testKeys;
 		//if (!testKeys.StartTest(strHost))
 		//    break;
 
-		CTestString testStr;
+/*		CTestString testStr;
 		if (!testStr.StartTest(strHost, port))
-			break;
+			break;*/
 
 		//CTestList testList;
 		//if (!testList.StartTest(strHost))
@@ -51,13 +52,13 @@ int main(void)
 		//if (!testHash.StartTest(strHost))
 		//    break;
 
-		CTestZset testZset;
+/*		CTestZset testZset;
 		if (!testZset.StartTest(strHost, port))
-			break;
+			break;*/
 
-		//CTestConcur testConcur;
-		//if (!testConcur.StartTest(strHost))
-		//    break;
+		CTestConcur testConcur;
+		if (!testConcur.StartTest(strHost, port))
+		    break;
 
 		break;
 	}

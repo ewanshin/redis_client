@@ -14,7 +14,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <algorithm>
-//#include <pthread/pthread.h>
+#include <pthread/pthread.h>
 #include <string.h>
 
 #define RC_RESULT_EOF       5
@@ -38,33 +38,24 @@
 typedef std::function<int (redisReply *)> TFuncFetch;
 typedef std::function<int (int, redisReply *)> TFuncConvert;
 
+
 class CSafeLock
 {
 public:
-	//CSafeLock(pthread_rwlock_t *pLock);
-	CSafeLock(std::mutex* mutex);
-	~CSafeLock();
+	CSafeLock(pthread_rwlock_t *pLock) : m_pLock(pLock), m_bLocked(false) {}
+	~CSafeLock() { Unlock(); }
 
-	bool ReadLock();
-	bool WriteLock();
-	bool TryReadLock();
-	bool TryWriteLock();
-	void Unlock();
+	inline bool ReadLock() { return (m_bLocked = (pthread_rwlock_rdlock(m_pLock) == 0)); }
+	inline bool WriteLock() { return (m_bLocked = (pthread_rwlock_wrlock(m_pLock) == 0)); }
+	inline bool TryReadLock() { return (m_bLocked = (pthread_rwlock_tryrdlock(m_pLock) == 0)); }
+	inline bool TryWriteLock() { return (m_bLocked = (pthread_rwlock_trywrlock(m_pLock) == 0)); }
+	inline void Unlock() { if (m_bLocked) pthread_rwlock_unlock(m_pLock); }
 
-	void lock();
-	void unlock();
-	//inline bool ReadLock() { return (m_bLocked = (pthread_rwlock_rdlock(m_pLock) == 0)); }
-	//inline bool WriteLock() { return (m_bLocked = (pthread_rwlock_wrlock(m_pLock) == 0)); }
-	//inline bool TryReadLock() { return (m_bLocked = (pthread_rwlock_tryrdlock(m_pLock) == 0)); }
-	//inline bool TryWriteLock() { return (m_bLocked = (pthread_rwlock_trywrlock(m_pLock) == 0)); }
-	//inline void Unlock() { if (m_bLocked) pthread_rwlock_unlock(m_pLock); }
-
-	//inline void lock() { WriteLock(); }
-	//inline void unlock() { Unlock(); }
+	inline void lock() { WriteLock(); }
+	inline void unlock() { Unlock(); }
 
 private:
-	//pthread_rwlock_t *m_pLock;
-	std::mutex* m_mutex;
+	pthread_rwlock_t *m_pLock;
 	bool m_bLocked;
 };
 
@@ -426,8 +417,7 @@ private:
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
 #endif
-	//pthread_rwlock_t m_rwLock;
-	std::mutex m_mutex;
+	pthread_rwlock_t m_rwLock;
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 };

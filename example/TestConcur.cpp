@@ -1,29 +1,40 @@
 #include "TestConcur.hpp"
 
-#define NUM_DEF 150
+//#define NUM_DEF 150
+#define NUM_DEF 0
 
 CTestConcur::CTestConcur()
 {
 }
 
-bool CTestConcur::StartTest(const std::string &strHost)
+bool CTestConcur::StartTest(const std::string &strHost, int port)
 {
-    if (!m_redis.Initialize(strHost, 6379, 2, 100))
+	spdlog::set_async_mode(8192, spdlog::async_overflow_policy::block_retry,
+		nullptr, std::chrono::seconds(1), nullptr);
+	console_ = spdlog::stdout_color_mt("console");
+	spdlog::set_level(spdlog::level::trace);
+	spdlog::get("console")->debug("Logger created");
+	spdlog::get("console")->flush();
+    if (!m_redis.Initialize(strHost, port, 2, 100))
     {
-        std::cout << "Connect to redis failed" << std::endl;
+        //std::cout << "Connect to redis failed" << std::endl;
+		console_->info("Connect to redis failed");
         return false;
     }
 
     if (!InitStringEnv(100, 10))
     {
-        std::cout << "Initialize environment failed" << std::endl;
+        //std::cout << "Initialize environment failed" << std::endl;
+		console_->info("Initialize environment failed");
         return false;
     }
 
     m_bExit = false;
     const int nGetTrdNum = 20;
     const int nSetTrdNum = 20;
-    std::thread *pthreadGet[nGetTrdNum] = {nullptr};
+	//const int nGetTrdNum = 1;
+	//const int nSetTrdNum = 1;
+	std::thread *pthreadGet[nGetTrdNum] = {nullptr};
     std::thread *pthreadSet[nSetTrdNum] = {nullptr};
     for (int i = 0; i < nGetTrdNum; ++i)
         pthreadGet[i] = new std::thread(std::bind(&CTestConcur::Test_Get, this));
@@ -41,7 +52,8 @@ bool CTestConcur::StartTest(const std::string &strHost)
             pthreadSet[i]->join();
     }
 
-    std::cout << "TestFinish" << std::endl;
+    //std::cout << "TestFinish" << std::endl;
+	console_->info("TestFinish");
     return true;
 }
 
@@ -53,10 +65,16 @@ void CTestConcur::Test_GetS()
         int nRet = m_redis.Get("tk_str_1", &strVal);
         if (nRet != RC_SUCCESS)
         {
-            if (nRet == RC_NO_RESOURCE)
-                std::cout << "No resource: " << time(nullptr) << std::endl;
-            else
-                std::cout << "Get Failed: " << time(nullptr) << std::endl;
+			if (nRet == RC_NO_RESOURCE)
+			{
+				//std::cout << "No resource: " << time(nullptr) << std::endl;
+				console_->error("No resource: ", time(nullptr));
+			}
+			else
+			{
+				//std::cout << "Get Failed: " << time(nullptr) << std::endl;
+				console_->error("Get Failed: ", time(nullptr));
+			}
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -77,13 +95,17 @@ void CTestConcur::Test_Get()
         int nRet = m_redis.Get(ss.str(), &strVal);
         if (nRet == RC_SUCCESS)
         {
-            m_mutex.lock();
+            //m_mutex.lock();
             if (++npc > NUM_DEF)
             {
-                std::cout << "Get OK: " << strVal << std::endl;
+                //std::cout << "Get OK: " << strVal << std::endl;
+				std::stringstream stream;
+				stream << std::this_thread::get_id();
+				int thread_id = std::stoull(stream.str());
+				spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
                 npc = 0;
             }
-            m_mutex.unlock();
+            //m_mutex.unlock();
         }
         else
         {
@@ -94,12 +116,12 @@ void CTestConcur::Test_Get()
 				if (nRet == RC_NO_RESOURCE)
 				{
 					//std::cout << "No resource: " << tv.tv_usec << std::endl;
-					std::cout << "No resource: " << std::endl;
+					spdlog::get("console")->debug("No resource: " + strVal);
 				}
 				else
 				{
-					std::cout << "Get Failed: " << std::endl;
-					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+					//std::cout << "Get Failed: " << std::endl;
+					spdlog::get("console")->debug("Get Failed: " + strVal);
 				}
                 npc = 0;
             }
@@ -130,7 +152,12 @@ void CTestConcur::Test_Set()
             m_mutex.lock();
             if (++npc > NUM_DEF)
             {
-                std::cout << "Set OK" << std::endl;
+				std::stringstream stream;
+				stream << std::this_thread::get_id();
+				int thread_id = std::stoull(stream.str());
+				spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Set OK [key:" + ssKey.str() + "][value:" + ssVal.str() + "]");
+
+                //std::cout << "Set OK" << std::endl;
                 npc = 0;
             }
             m_mutex.unlock();
@@ -143,13 +170,13 @@ void CTestConcur::Test_Set()
             {
 				if (nRet == RC_NO_RESOURCE)
 				{
-					std::cout << "No resource: " << std::endl;
 					//std::cout << "No resource: " << tv.tv_usec << std::endl;
+					spdlog::get("console")->debug("No resource: ");
 				}
 				else
 				{
-					std::cout << "Get Failed: " << std::endl;
 					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
+					spdlog::get("console")->debug("Get Failed: ");
 				}
                 npc = 0;
             }
