@@ -15,7 +15,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	spdlog::set_level(spdlog::level::trace);
 	spdlog::get("console")->debug("Logger created");
 	spdlog::get("console")->flush();
-    if (!m_redis.Initialize(strHost, port, 2, 100))
+    if (!m_redis.Initialize(strHost, port, 5, 5, 100))
     {
         //std::cout << "Connect to redis failed" << std::endl;
 		console_->info("Connect to redis failed");
@@ -95,17 +95,17 @@ void CTestConcur::Test_Get()
         int nRet = m_redis.Get(ss.str(), &strVal);
         if (nRet == RC_SUCCESS)
         {
-            //m_mutex.lock();
+            m_mutex.lock();
             if (++npc > NUM_DEF)
             {
                 //std::cout << "Get OK: " << strVal << std::endl;
 				std::stringstream stream;
 				stream << std::this_thread::get_id();
 				int thread_id = std::stoull(stream.str());
-				spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
+				spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
                 npc = 0;
             }
-            //m_mutex.unlock();
+            m_mutex.unlock();
         }
         else
         {
@@ -116,19 +116,19 @@ void CTestConcur::Test_Get()
 				if (nRet == RC_NO_RESOURCE)
 				{
 					//std::cout << "No resource: " << tv.tv_usec << std::endl;
-					spdlog::get("console")->debug("No resource: " + strVal);
+					spdlog::get("console")->error("No resource: " + strVal);
 				}
 				else
 				{
 					//std::cout << "Get Failed: " << std::endl;
-					spdlog::get("console")->debug("Get Failed: " + strVal);
+					spdlog::get("console")->error("Get Failed: " + strVal);
 				}
                 npc = 0;
             }
             m_mutex.unlock();
             //m_bExit = true;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (nIndex > 10)
             nIndex = 1;
     }

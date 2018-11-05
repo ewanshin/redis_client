@@ -1,6 +1,8 @@
 #ifndef REDIS_CLIENT_H
 #define REDIS_CLIENT_H
 
+#define _X86_
+
 #include "hiredis/hiredis.h"
 #include <string>
 #include <vector>
@@ -14,8 +16,8 @@
 #include <condition_variable>
 #include <iostream>
 #include <algorithm>
-#include <pthread/pthread.h>
 #include <string.h>
+#include <synchapi.h>
 
 #define RC_RESULT_EOF       5
 #define RC_NO_EFFECT        4
@@ -42,20 +44,61 @@ typedef std::function<int (int, redisReply *)> TFuncConvert;
 class CSafeLock
 {
 public:
-	CSafeLock(pthread_rwlock_t *pLock) : m_pLock(pLock), m_bLocked(false) {}
-	~CSafeLock() { Unlock(); }
+	CSafeLock(PSRWLOCK pLock) : m_pLock(pLock), m_bLocked(false) {}
+	~CSafeLock() { WriteUnlock(); }
 
-	inline bool ReadLock() { return (m_bLocked = (pthread_rwlock_rdlock(m_pLock) == 0)); }
-	inline bool WriteLock() { return (m_bLocked = (pthread_rwlock_wrlock(m_pLock) == 0)); }
-	inline bool TryReadLock() { return (m_bLocked = (pthread_rwlock_tryrdlock(m_pLock) == 0)); }
-	inline bool TryWriteLock() { return (m_bLocked = (pthread_rwlock_trywrlock(m_pLock) == 0)); }
-	inline void Unlock() { if (m_bLocked) pthread_rwlock_unlock(m_pLock); }
+	inline bool ReadLock()
+	{
+		if (false == TryReadLock())
+		{
+			return false;
+		}
+		AcquireSRWLockShared(m_pLock);
+		return true;
+	}
+	inline bool WriteLock() 
+	{
+		if (false == TryWriteLock())
+		{
+			return false;
+		}
+		AcquireSRWLockExclusive(m_pLock);
+		return true;
+	}
+	inline bool TryReadLock()
+	{
+		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == true));
+	}
+	inline bool TryWriteLock()
+	{
+		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == true));
+	}
+	inline void WriteUnlock() 
+	{
+		if (m_pLock)
+		{
+			if (false == TryWriteLock())
+			{
+				ReleaseSRWLockExclusive(m_pLock);
+			}
+		}
+	}
+	inline void ReadUnlock() 
+	{
+		if (m_pLock)
+		{
+			if (false == TryReadLock())
+			{
+				ReleaseSRWLockShared(m_pLock);
+			}
+		}
+	}
 
 	inline void lock() { WriteLock(); }
-	inline void unlock() { Unlock(); }
+	inline void unlock() { WriteUnlock(); }
 
 private:
-	pthread_rwlock_t *m_pLock;
+	PSRWLOCK m_pLock = nullptr;
 	bool m_bLocked;
 };
 
@@ -149,7 +192,7 @@ class CRedisServer
     friend class CRedisConnection;
     friend class CRedisClient;
 public:
-    CRedisServer(const std::string &strHost, int nPort, int nTimeout, int nConnNum);
+    CRedisServer(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout,int nConnNum);
     virtual ~CRedisServer();
 
     void SetSlave(const std::string &strHost, int nPort);
@@ -187,7 +230,7 @@ public:
 	CRedisClient();
 	~CRedisClient();
 
-	bool Initialize(const std::string &strHost, int nPort, int nTimeout, int nConnNum);
+	bool Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum);
 	bool IsCluster() { return m_bCluster; }
 
 
@@ -405,7 +448,8 @@ private:
 private:
 	std::string m_strHost;
 	int m_nPort;
-	int m_nTimeout;
+	int m_nClientTimeout;
+	int m_nServerTimeout;
 	int m_nConnNum;
 	bool m_bCluster;
 	bool m_bValid;
@@ -417,7 +461,8 @@ private:
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
 #endif
-	pthread_rwlock_t m_rwLock;
+	//pthread_rwlock_t m_rwLock;
+	SRWLOCK				m_rwLock;
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 };

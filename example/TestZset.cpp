@@ -8,7 +8,7 @@ bool CTestZset::StartTest(const std::string &strHost, int port)
 {
     bool bSuccess = false;
     std::cout << "start to test zset command" << std::endl;
-    if (!m_redis.Initialize(strHost, port, 2, 10))
+    if (!m_redis.Initialize(strHost, port, 5, 5, 10))
         std::cout << "init redis client failed" << std::endl;
     else
         bSuccess = Test_Zcard() && Test_Zcount() && Test_Zincrby() && Test_Zinterstore() &&

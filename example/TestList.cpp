@@ -8,7 +8,7 @@ bool CTestList::StartTest(const std::string &strHost)
 {
     bool bSuccess = false;
     std::cout << "start to test list command" << std::endl;
-    if (!m_redis.Initialize(strHost, 6379, 2, 10))
+    if (!m_redis.Initialize(strHost, 3001, 5, 5, 10))
         std::cout << "init redis client failed" << std::endl;
     else
         bSuccess = Test_Blpop() && Test_Brpop() && Test_Lindex() && Test_Linsert() &&

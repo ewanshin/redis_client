@@ -9,7 +9,7 @@ bool CTestGeneric::StartTest(const std::string &strHost)
 {
     bool bSuccess = false;
     std::cout << "start to test generic command" << std::endl;
-    if (!m_redis.Initialize(strHost, 6379, 2, 10))
+    if (!m_redis.Initialize(strHost, 30001, 5, 5, 10))
         std::cout << "init redis client failed" << std::endl;
     else
         bSuccess = Test_Del() && Test_Exists() && Test_Expire() && Test_Expireat() &&

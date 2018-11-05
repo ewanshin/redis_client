@@ -8,7 +8,7 @@ bool CTestHash::StartTest(const std::string &strHost)
 {
     bool bSuccess = false;
     std::cout << "start to test hash command" << std::endl;
-    if (!m_redis.Initialize(strHost, 6379, 2, 10))
+    if (!m_redis.Initialize(strHost, 3001, 5, 5, 10))
         std::cout << "init redis client failed" << std::endl;
     else
         bSuccess = Test_Hexists() && Test_Hdel() && Test_Hgetall() && Test_Hincrby() &&

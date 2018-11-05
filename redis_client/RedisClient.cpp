@@ -629,6 +629,7 @@ CRedisConnection::~CRedisConnection(){
 
 	if (m_pContext)
         redisFree(m_pContext);
+	m_pRedisServ = nullptr;
 }
 int CRedisConnection::ConnRequest(CRedisCommand *pRedisCmd)
 {
@@ -674,12 +675,15 @@ int CRedisConnection::ConnRequest(std::vector<CRedisCommand *> &vecRedisCmd)
 
 bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int nTimeout)
 {
-    if (m_pContext)
-        redisFree(m_pContext);
+	if (m_pContext)
+	{
+		redisFree(m_pContext);
+		m_pContext = nullptr;
+	}
 
     struct timeval tmTimeout = {static_cast<long>(nTimeout), 0};
-    //m_pContext = redisConnectWithTimeout(strHost.c_str(), nPort, tmTimeout);
-	m_pContext = redisConnect(strHost.c_str(), nPort);
+    m_pContext = redisConnectWithTimeout(strHost.c_str(), nPort, tmTimeout);
+	//m_pContext = redisConnect(strHost.c_str(), nPort);
     if (!m_pContext || m_pContext->err)
     {
         if (m_pContext)
@@ -687,6 +691,7 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
             redisFree(m_pContext);
             m_pContext = nullptr;
         }
+		spdlog::get("console")->error("[CRedisConnection::ConnectToRedis failed [ip:" + strHost + "][port:" + std::to_string(nPort) + "]");
         return false;
     }
 
@@ -697,29 +702,32 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
 
 bool CRedisConnection::Reconnect()
 {
-    if (!m_pRedisServ->m_strHost.empty() &&
-        ConnectToRedis(m_pRedisServ->m_strHost, m_pRedisServ->m_nPort, m_pRedisServ->m_nCliTimeout))
-        return true;
+	if (!m_pRedisServ->m_strHost.empty() &&
+		ConnectToRedis(m_pRedisServ->m_strHost, m_pRedisServ->m_nPort, m_pRedisServ->m_nCliTimeout))
+		return true;
 
-    for (auto &hostPair : m_pRedisServ->m_vecHosts)
-    {
-        if (ConnectToRedis(hostPair.first, hostPair.second, m_pRedisServ->m_nCliTimeout))
-        {
-            m_pRedisServ->m_strHost = hostPair.first;
-            m_pRedisServ->m_nPort = hostPair.second;
-            return true;
-        }
-    }
+	if (0 < m_pRedisServ->m_vecHosts.size())
+	{
+		for (auto &hostPair : m_pRedisServ->m_vecHosts)
+		{
+			if (ConnectToRedis(hostPair.first, hostPair.second, m_pRedisServ->m_nCliTimeout))
+			{
+				m_pRedisServ->m_strHost = hostPair.first;
+				m_pRedisServ->m_nPort = hostPair.second;
+				return true;
+			}
+		}
+	}
 
     m_pRedisServ->m_strHost.clear();
     return false;
 }
 
 // CRedisServer methods
-CRedisServer::CRedisServer(const std::string &strHost, int nPort, int nTimeout, int nConnNum)
-    : m_strHost(strHost), m_nPort(nPort), m_nCliTimeout(nTimeout), m_nSerTimeout(0), m_nConnNum(nConnNum)
+CRedisServer::CRedisServer(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
+    : m_strHost(strHost), m_nPort(nPort), m_nCliTimeout(nClientTimeout), m_nSerTimeout(nServerTimeout), m_nConnNum(nConnNum)
 {
-//	SetSlave(strHost, nPort);
+	SetSlave(strHost, nPort);
     Initialize();
 }
 
@@ -741,6 +749,7 @@ void CRedisServer::CleanConn()
 
 void CRedisServer::SetSlave(const std::string &strHost, int nPort)
 {
+	spdlog::get("console")->info("[CRedisServer::SetSlave [host:" + strHost + "][port:" + std::to_string(nPort) + "]");
     m_vecHosts.push_back(std::make_pair(strHost, nPort));
 }
 
@@ -775,17 +784,20 @@ bool CRedisServer::Initialize()
             m_queIdleConn.push(pRedisConn);
     }
 
-    if (!m_queIdleConn.empty())
+/*    if (!m_queIdleConn.empty())
     {
         std::vector<std::string> vecTimeout;
         //CRedisCommand redisCmd("config");
         //redisCmd.SetArgs("get", "timeout");
 		CRedisCommand redisCmd("config get timeout");
-        if (ServRequest(&redisCmd) == RC_SUCCESS &&
-            redisCmd.FetchResult(BIND_VSTR(&vecTimeout)) == RC_SUCCESS &&
-            vecTimeout.size() == 2)
-            m_nSerTimeout = atoi(vecTimeout[1].c_str());
-    }
+		if (ServRequest(&redisCmd) == RC_SUCCESS &&
+			redisCmd.FetchResult(BIND_VSTR(&vecTimeout)) == RC_SUCCESS &&
+			vecTimeout.size() == 2)
+		{
+
+			m_nSerTimeout = atoi(vecTimeout[1].c_str());
+		}
+    }*/
     return !m_queIdleConn.empty();
 }
 
@@ -810,7 +822,7 @@ int CRedisServer::ServRequest(CRedisCommand *pRedisCmd)
 
 // CRedisClient methods
 CRedisClient::CRedisClient()
-    : m_nPort(-1), m_nTimeout(-1), m_nConnNum(-1), m_bCluster(false),
+	: m_nPort(-1), m_nClientTimeout(-1), m_nServerTimeout(-1), m_nConnNum(-1), m_bCluster(false),
       m_bValid(true), m_bExit(false), m_pThread(nullptr)
 {
 #if defined(linux) || defined(__linux) || defined(__linux__)
@@ -818,7 +830,8 @@ CRedisClient::CRedisClient()
     pthread_rwlockattr_setkind_np(&m_rwAttr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&m_rwLock, &m_rwAttr);
 #else
-    pthread_rwlock_init(&m_rwLock, nullptr);
+//    pthread_rwlock_init(&m_rwLock, nullptr);
+	InitializeSRWLock(&m_rwLock);
 #endif
 }
 
@@ -846,20 +859,22 @@ CRedisClient::~CRedisClient()
 #if defined(linux) || defined(__linux) || defined(__linux__)
     pthread_rwlockattr_destroy(&m_rwAttr);
 #endif
-	pthread_rwlock_destroy(&m_rwLock);
+	//pthread_rwlock_destroy(&m_rwLock);
+	
 }
 
-bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nTimeout, int nConnNum)
+bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
 {
     std::string::size_type nPos = strHost.find(':');
     m_strHost = (nPos == std::string::npos) ? strHost : strHost.substr(0, nPos);
     m_nPort = (nPos == std::string::npos) ? nPort : atoi(strHost.substr(nPos + 1).c_str());
-    m_nTimeout = nTimeout;
+    m_nClientTimeout = nClientTimeout;
+	m_nServerTimeout = nServerTimeout;
     m_nConnNum = nConnNum;
-    if (m_strHost.empty() || m_nPort <= 0 || m_nTimeout <= 0 || m_nConnNum <= 0)
+	if (m_strHost.empty() || m_nPort <= 0 || m_nClientTimeout <= 0 || m_nServerTimeout <= 0 || m_nConnNum <= 0)
         return false;
 
-    CRedisServer *pRedisServ = new CRedisServer(m_strHost, m_nPort, m_nTimeout, m_nConnNum);
+    CRedisServer *pRedisServ = new CRedisServer(m_strHost, m_nPort, m_nClientTimeout, m_nServerTimeout, m_nConnNum);
     if (!pRedisServ->IsValid())
         return false;
 
@@ -2001,7 +2016,7 @@ bool CRedisClient::LoadClusterSlots()
             {
                 if (!(pSlotServ = FindServer(vecRedisServ, slotReg.strHost, slotReg.nPort)))
                 {
-                    pSlotServ = new CRedisServer(slotReg.strHost, slotReg.nPort, m_nTimeout, m_nConnNum);
+                    pSlotServ = new CRedisServer(slotReg.strHost, slotReg.nPort, m_nClientTimeout, m_nServerTimeout, m_nConnNum);
                     if (!pSlotServ->IsValid())
                     {
                         for (auto pRedisServ : vecRedisServ)

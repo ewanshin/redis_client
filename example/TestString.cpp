@@ -8,7 +8,7 @@ bool CTestString::StartTest(const std::string &strHost, int port)
 {
     bool bSuccess = false;
     std::cout << "start to test string command" << std::endl;
-    if (!m_redis.Initialize(strHost, port, 2, 10))
+    if (!m_redis.Initialize(strHost, port, 5, 5, 10))
         std::cout << "init redis client failed" << std::endl;
     else
         bSuccess = Test_Append() && Test_Bitcount() && Test_Bitop() && Test_Bitpos() &&

@@ -8,7 +8,7 @@ bool CTestBase::StartTest(const std::string &strHost, int port)
 {
 	bool bSuccess = false;
 	std::cout << "start to test base command" << std::endl;
-	if (!m_redis.Initialize(strHost, port, 5, 10))
+	if (!m_redis.Initialize(strHost, port, 5, 5, 10))
 		std::cout << "initialize redis client failed host:" << strHost << std::endl;
 	else
 	{
