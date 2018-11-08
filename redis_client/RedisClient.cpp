@@ -1,4 +1,4 @@
-#include "redis_client/RedisClient.hpp"
+﻿#include "redis_client/RedisClient.hpp"
 #include <WinSock2.h>
 #include <spdlog/spdlog.h>
 
@@ -675,6 +675,11 @@ int CRedisConnection::ConnRequest(std::vector<CRedisCommand *> &vecRedisCmd)
 
 bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int nTimeout)
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+
+	spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisConnection::ConnectToRedis start [ip:" + strHost + "][port:" + std::to_string(nPort) + "]");
 	if (m_pContext)
 	{
 		redisFree(m_pContext);
@@ -683,7 +688,6 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
 
     struct timeval tmTimeout = {static_cast<long>(nTimeout), 0};
     m_pContext = redisConnectWithTimeout(strHost.c_str(), nPort, tmTimeout);
-	//m_pContext = redisConnect(strHost.c_str(), nPort);
     if (!m_pContext || m_pContext->err)
     {
         if (m_pContext)
@@ -691,7 +695,8 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
             redisFree(m_pContext);
             m_pContext = nullptr;
         }
-		spdlog::get("console")->error("[CRedisConnection::ConnectToRedis failed [ip:" + strHost + "][port:" + std::to_string(nPort) + "]");
+
+		spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisConnection::ConnectToRedis failed [ip:" + strHost + "][port:" + std::to_string(nPort) + "]");
         return false;
     }
 
@@ -702,6 +707,11 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
 
 bool CRedisConnection::Reconnect()
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+	spdlog::get("console")->info("[thread:" + std::to_string(thread_id) + "]CRedisConnection::Reconnect [ip:" + m_pRedisServ->m_strHost + "][port:" + std::to_string(m_pRedisServ->m_nPort) + "]");
+
 	if (!m_pRedisServ->m_strHost.empty() &&
 		ConnectToRedis(m_pRedisServ->m_strHost, m_pRedisServ->m_nPort, m_pRedisServ->m_nCliTimeout))
 		return true;
@@ -749,7 +759,10 @@ void CRedisServer::CleanConn()
 
 void CRedisServer::SetSlave(const std::string &strHost, int nPort)
 {
-	spdlog::get("console")->info("[CRedisServer::SetSlave [host:" + strHost + "][port:" + std::to_string(nPort) + "]");
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+	spdlog::get("console")->info("[thread:" + std::to_string(thread_id) + "][CRedisServer::SetSlave [host:" + strHost + "][port:" + std::to_string(nPort) + "]");
     m_vecHosts.push_back(std::make_pair(strHost, nPort));
 }
 
@@ -848,6 +861,7 @@ CRedisClient::~CRedisClient()
 		CSafeLock safeLock(&m_rwLock);
 		safeLock.WriteLock();
 		m_condAny.notify_all();
+		safeLock.WriteUnlock();
     }
     if (m_pThread)
     {
@@ -896,38 +910,66 @@ bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nClient
 	std::stringstream stream;
 	stream << std::this_thread::get_id();
 	int thread_id = std::stoull(stream.str());
-	spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::Initialize [host:" + strHost + "][port" + std::to_string(nPort) + "]");
+	spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::Initialize [host:" + strHost + "][port:" + std::to_string(nPort) + "]");
     m_vecRedisServ.push_back(pRedisServ);
     m_bValid = (m_bCluster ? LoadClusterSlots() : LoadSlaveInfo(mapInfo)) &&
         (m_pThread = new std::thread(std::bind(&CRedisClient::operator(), this))) != nullptr;
+
+	if (false == m_bValid)
+	{
+		spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::Initialize valid is false");
+	}
     return m_bValid;
 }
 
 void CRedisClient::operator()()
 {
-    while (!m_bExit)
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+
+	while (!m_bExit)
     {
         {
 			CSafeLock safeLock(&m_rwLock);
 			safeLock.WriteLock();
 
-			bool _test_valid = m_bValid;
-			int  _test_wait = 0;
 			if (m_bValid)
 			{
-				_test_wait++;
-				std::stringstream stream;
-				stream << std::this_thread::get_id();
-				int thread_id = std::stoull(stream.str());
-				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::wait start]");
-				spdlog::get("console")->flush();
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() wait start]");
+				//spdlog::get("console")->flush();
 				m_condAny.wait(safeLock);
 				
-				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::wait end]");
-				_test_wait++;
+
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() wait end]");
+				//spdlog::get("console")->flush();
+			}
+			else
+			{
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() not valid]");
 			}
 
+			if (true == m_bCluster)
+			{
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() load cluster");
+			}
+			else
+			{
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() server initialize");
+			}
+
+			if (true == m_bCluster)
+			{
+				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() cluster mode");
+			}
+			else
+			{
+
+			}
+			spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() non-cluster mode");
+		
             m_bValid = m_bCluster ? LoadClusterSlots() : m_vecRedisServ[0]->Initialize();
+			safeLock.WriteUnlock();
         }
 
         if (!m_bValid)
@@ -1992,7 +2034,11 @@ bool CRedisClient::LoadSlaveInfo(const std::map<std::string, std::string> &mapIn
 
 bool CRedisClient::LoadClusterSlots()
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
 
+	spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots [server list:" + std::to_string(m_vecRedisServ.size()) + "]");
     std::vector<CRedisServer *> vecRedisServ;
     std::vector<SlotRegion> vecSlot;
     CRedisCommand redisCmd("cluster slots");
@@ -2003,15 +2049,34 @@ bool CRedisClient::LoadClusterSlots()
         CRedisServer *pRedisServ = m_vecRedisServ[i];
         if (!pRedisServ->IsValid())
         {
-            for (auto pRedisServ : vecRedisServ)
-                delete pRedisServ;
+			spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots not valid server [size:" + std::to_string(vecRedisServ.size()) + "]");
+			for (auto pRedisServ : vecRedisServ)
+			{
+				spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots delete server]");
+				delete pRedisServ;
+				//pRedisServ = nullptr;
+			}
+
             return false;
         }
+		else
+		{
+			spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots valid server ");
+		}
 
         CRedisServer *pSlotServ = nullptr;
-        if (pRedisServ->ServRequest(&redisCmd) == RC_SUCCESS &&
-            redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
-        {
+        //if (pRedisServ->ServRequest(&redisCmd) == RC_SUCCESS &&
+        //    redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
+		auto servRequest = pRedisServ->ServRequest(&redisCmd);
+		if ( servRequest == RC_SUCCESS &&
+		    redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
+
+		{
+			if (vecSlot.size() == 0)
+			{
+				spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots invalid size");
+				return false;
+			}
             for (auto &slotReg : vecSlot)
             {
                 if (!(pSlotServ = FindServer(vecRedisServ, slotReg.strHost, slotReg.nPort)))
@@ -2021,6 +2086,7 @@ bool CRedisClient::LoadClusterSlots()
                     {
                         for (auto pRedisServ : vecRedisServ)
                             delete pRedisServ;
+						spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots not valid server [host:" + slotReg.strHost + "][port:" + std::to_string(slotReg.nPort) + "]");
                         return false;
                     }
                     vecRedisServ.push_back(pSlotServ);
@@ -2032,8 +2098,13 @@ bool CRedisClient::LoadClusterSlots()
             std::sort(vecSlot.begin(), vecSlot.end());
             m_vecRedisServ = vecRedisServ;
             m_vecSlot = vecSlot;
+			spdlog::get("console")->warn("[thireadid:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots return");
             return true;
         }
+		else
+		{
+			spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::LoadClusterSlots invalid result ");
+		}
     }
     return false;
 }
@@ -2045,10 +2116,18 @@ bool CRedisClient::WaitForRefresh()
 		stream << std::this_thread::get_id();
 		int thread_id = std::stoull(stream.str());
 
-		spdlog::get("console")->warn("[WaitForRefresh:" + std::to_string(thread_id) + "]");
+		spdlog::get("console")->info("[thread:" + std::to_string(thread_id) + "]CRedisClient::WaitForRefresh try lock");
 		CSafeLock safeLock(&m_rwLock);
 		if (safeLock.TryReadLock())
+		{
+			spdlog::get("console")->debug("[threadid:" + std::to_string(thread_id) + "]CRedisClient::WaitForRefresh notify all");
 			m_condAny.notify_all();
+		}
+		else
+		{
+			spdlog::get("console")->warn("[threadid:" + std::to_string(thread_id) + "]CRedisClient::WaitForRefresh TryReadLock failed");
+		}
+		safeLock.ReadUnlock();
     }
 
     int nRetry = WAIT_RETRY_TIMES;
@@ -2059,9 +2138,12 @@ bool CRedisClient::WaitForRefresh()
 
 void CRedisClient::CleanServer()
 {
+	
     m_vecSlot.clear();
-    for (auto pRedisServ : m_vecRedisServ)
-        delete pRedisServ;
+	for (auto pRedisServ : m_vecRedisServ)
+	{
+		delete pRedisServ;
+	}
     m_vecRedisServ.clear();
 }
 
@@ -2089,11 +2171,30 @@ int CRedisClient::Execute(CRedisCommand *pRedisCmd)
 
 int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 {
-	CSafeLock safeLock(&m_rwLock);
-	if (!safeLock.ReadLock() || !m_bValid)
-		return RC_RQST_ERR;
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
 
-    CRedisServer *pRedisServ = GetMatchedServer(pRedisCmd);
+	CSafeLock safeLock(&m_rwLock);
+	//if (!safeLock.ReadLock() || !m_bValid)
+	if (!safeLock.TryReadLock() || !m_bValid)
+	{
+		if (false == m_bValid)
+		{
+			spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::SimpleExecute failed RQST valid failed");
+
+		}
+		else
+		{
+			spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::SimpleExecute failed RQST valid true");
+		}
+		safeLock.ReadUnlock();
+		return RC_RQST_ERR;
+	}
+
+	//spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::SimpleExecute try readlock and true");
+	CRedisServer *pRedisServ = GetMatchedServer(pRedisCmd);
+	safeLock.ReadUnlock();
     return pRedisServ ? pRedisServ->ServRequest(pRedisCmd) : RC_RQST_ERR;
 }
 

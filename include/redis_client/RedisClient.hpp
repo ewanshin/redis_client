@@ -1,4 +1,4 @@
-#ifndef REDIS_CLIENT_H
+﻿#ifndef REDIS_CLIENT_H
 #define REDIS_CLIENT_H
 
 #define _X86_
@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <string.h>
 #include <synchapi.h>
+#include <spdlog/spdlog.h>
 
 #define RC_RESULT_EOF       5
 #define RC_NO_EFFECT        4
@@ -45,52 +46,87 @@ class CSafeLock
 {
 public:
 	CSafeLock(PSRWLOCK pLock) : m_pLock(pLock), m_bLocked(false) {}
-	~CSafeLock() { WriteUnlock(); }
+	//~CSafeLock() {
+	//	WriteUnlock();
+	//	ReadUnlock();
+	//}
+	~CSafeLock() {};
 
-	inline bool ReadLock()
+	inline bool ReadLock() 
 	{
-		if (false == TryReadLock())
-		{
-			return false;
-		}
+		//std::stringstream stream;
+		//stream << std::this_thread::get_id();
+		//int thread_id = std::stoull(stream.str());
+
+		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadLock");
 		AcquireSRWLockShared(m_pLock);
-		return true;
+		m_bLocked = true;
+		return m_bLocked;
 	}
-	inline bool WriteLock() 
+
+	inline bool WriteLock()
 	{
-		if (false == TryWriteLock())
-		{
-			return false;
-		}
+		//std::stringstream stream;
+		//stream << std::this_thread::get_id();
+		//int thread_id = std::stoull(stream.str());
+
+		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteLock");
 		AcquireSRWLockExclusive(m_pLock);
-		return true;
+		m_bLocked = true;
+		return m_bLocked;
 	}
+
 	inline bool TryReadLock()
 	{
-		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == true));
+		//std::stringstream stream;
+		//stream << std::this_thread::get_id();
+		//int thread_id = std::stoull(stream.str());
+
+		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]TryReadLock");
+		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == TRUE));
 	}
 	inline bool TryWriteLock()
 	{
-		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == true));
+		//std::stringstream stream;
+		//stream << std::this_thread::get_id();
+		//int thread_id = std::stoull(stream.str());
+
+		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]TryWriteLock");
+		return (m_bLocked = (TryAcquireSRWLockExclusive(m_pLock) == TRUE));
 	}
 	inline void WriteUnlock() 
 	{
-		if (m_pLock)
+		std::stringstream stream;
+		stream << std::this_thread::get_id();
+		int thread_id = std::stoull(stream.str());
+
+		if (true == m_bLocked)
 		{
-			if (false == TryWriteLock())
-			{
+			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteUnlock");
+			//if (m_pLock->Ptr)
 				ReleaseSRWLockExclusive(m_pLock);
-			}
+				
+		}
+		else
+		{
+			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteUnlock not locked");
 		}
 	}
 	inline void ReadUnlock() 
 	{
-		if (m_pLock)
+		std::stringstream stream;
+		stream << std::this_thread::get_id();
+		int thread_id = std::stoull(stream.str());
+
+		if (m_bLocked)
 		{
-			if (false == TryReadLock())
-			{
+			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadUnlock");
+			//if (m_pLock->Ptr)
 				ReleaseSRWLockShared(m_pLock);
-			}
+		}
+		else
+		{
+			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadUnlock not locked");
 		}
 	}
 
@@ -365,7 +401,6 @@ private:
     static CRedisServer * FindServer(const std::vector<CRedisServer *> &vecRedisServ, const std::string &strHost, int nPort);
 
     void operator()();
-
     void CleanServer();
     CRedisServer * FindServer(int nSlot) const;
     bool InSameNode(const std::string &strKey1, const std::string &strKey2);

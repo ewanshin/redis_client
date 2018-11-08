@@ -24,8 +24,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 
     if (!InitStringEnv(100, 10))
     {
-        //std::cout << "Initialize environment failed" << std::endl;
-		console_->info("Initialize environment failed");
+		spdlog::get("console")->info("Initialize environment failed");
         return false;
     }
 
@@ -73,7 +72,7 @@ void CTestConcur::Test_GetS()
 			else
 			{
 				//std::cout << "Get Failed: " << time(nullptr) << std::endl;
-				console_->error("Get Failed: ", time(nullptr));
+				console_->error("Get Failed [error:" + std::to_string(nRet) + "]");
 			}
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -102,7 +101,7 @@ void CTestConcur::Test_Get()
 				std::stringstream stream;
 				stream << std::this_thread::get_id();
 				int thread_id = std::stoull(stream.str());
-				spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
+				//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
                 npc = 0;
             }
             m_mutex.unlock();
@@ -121,7 +120,7 @@ void CTestConcur::Test_Get()
 				else
 				{
 					//std::cout << "Get Failed: " << std::endl;
-					spdlog::get("console")->error("Get Failed: " + strVal);
+					spdlog::get("console")->error("CTestConcur::Test_Get Failed:" + strVal + "][code:" + std::to_string(nRet) + "]");
 				}
                 npc = 0;
             }
@@ -155,7 +154,7 @@ void CTestConcur::Test_Set()
 				std::stringstream stream;
 				stream << std::this_thread::get_id();
 				int thread_id = std::stoull(stream.str());
-				spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Set OK [key:" + ssKey.str() + "][value:" + ssVal.str() + "]");
+				//spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Set OK [key:" + ssKey.str() + "][value:" + ssVal.str() + "]");
 
                 //std::cout << "Set OK" << std::endl;
                 npc = 0;
@@ -176,7 +175,7 @@ void CTestConcur::Test_Set()
 				else
 				{
 					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
-					spdlog::get("console")->debug("Get Failed: ");
+					spdlog::get("console")->debug("Get Failed: [error:" + std::to_string(nRet) + "]");
 				}
                 npc = 0;
             }

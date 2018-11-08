@@ -7,6 +7,12 @@ class CTestConcur : public CTestClient
 {
 public:
     CTestConcur();
+	~CTestConcur()
+	{
+		int a = 0;
+		a++;
+		a++;
+	};
 	bool StartTest(const std::string &strHost, int port);
 
 	std::shared_ptr<spdlog::logger> console_;
