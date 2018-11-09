@@ -1,7 +1,4 @@
 #include "TestConcur.hpp"
-#include <spdlog/sinks/stdout_color_sinks.h>
-//#include <spdlog/sinks/daily_file_sink.h>
-//#include <spdlog/async.h>
 
 //#define NUM_DEF 150
 #define NUM_DEF 0
@@ -12,20 +9,18 @@ CTestConcur::CTestConcur()
 
 bool CTestConcur::StartTest(const std::string &strHost, int port)
 {
-	console_ = spdlog::stdout_color_mt("console");
-	console_->set_level(spdlog::level::trace);
-	spdlog::get("console")->debug("Logger created");
+	CTestClient::StartTest(strHost, port);
+
 
 	if (!m_redis.Initialize(strHost, port, 5, 5, 20))
     {
-        //std::cout << "Connect to redis failed" << std::endl;
-		console_->info("Connect to redis failed");
+		log_error("Connect to redis failed [ip:", strHost, "][port:", port, "]");
         return false;
     }
 
     if (!InitStringEnv(100, 10))
     {
-		spdlog::get("console")->info("Initialize environment failed");
+		log_error("Initialize environment failed [ip:", strHost, "][port:", port, "]");
         return false;
     }
 
@@ -52,8 +47,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
             pthreadSet[i]->join();
     }
 
-    //std::cout << "TestFinish" << std::endl;
-	console_->info("TestFinish");
+	log_info("TestFinish");
     return true;
 }
 
@@ -67,13 +61,11 @@ void CTestConcur::Test_GetS()
         {
 			if (nRet == RC_NO_RESOURCE)
 			{
-				//std::cout << "No resource: " << time(nullptr) << std::endl;
-				console_->error("No resource: ", time(nullptr));
+				log_error("No resource: ", time(nullptr));
 			}
 			else
 			{
-				//std::cout << "Get Failed: " << time(nullptr) << std::endl;
-				console_->error("Get Failed [error:" + std::to_string(nRet) + "]");
+				log_error("Get Failed [error:", nRet, "]");
 			}
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -82,10 +74,6 @@ void CTestConcur::Test_GetS()
 
 void CTestConcur::Test_Get()
 {
-	std::stringstream stream;
-	stream << std::this_thread::get_id();
-	int thread_id = std::stoull(stream.str());
-
 	//struct timeval tv;
 	//struct timezone tz;
 
@@ -102,8 +90,7 @@ void CTestConcur::Test_Get()
             m_mutex.lock();
             if (++npc > NUM_DEF)
             {
-                //std::cout << "Get OK: " << strVal << std::endl;
-				spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
+				log_trace("Get OK [key:", ss.str(), "][value:", strVal, "]");
                 npc = 0;
             }
             m_mutex.unlock();
@@ -116,13 +103,11 @@ void CTestConcur::Test_Get()
 			{
 				if (nRet == RC_NO_RESOURCE)
 				{
-					//std::cout << "No resource: " << tv.tv_usec << std::endl;
-					spdlog::get("console")->error("No resource: " + strVal);
+					log_error("No resource : ", strVal);
 				}
 				else
 				{
-					//std::cout << "Get Failed: " << std::endl;
-					spdlog::get("console")->error("CTestConcur::Test_Get Failed:" + strVal + "][code:" + std::to_string(nRet) + "]");
+					log_error("CTestConcur::Test_Get Failed:", strVal, "][errorcode:", nRet, "]");
 				}
                 npc = 0;
             }
@@ -153,12 +138,7 @@ void CTestConcur::Test_Set()
             m_mutex.lock();
             if (++npc > NUM_DEF)
             {
-				std::stringstream stream;
-				stream << std::this_thread::get_id();
-				int thread_id = std::stoull(stream.str());
-				//spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]Set OK [key:" + ssKey.str() + "][value:" + ssVal.str() + "]");
-
-                //std::cout << "Set OK" << std::endl;
+				log_debug("Set OK [key:", ssKey.str(), "][value:", ssVal.str(), "]");
                 npc = 0;
             }
             m_mutex.unlock();
@@ -172,12 +152,12 @@ void CTestConcur::Test_Set()
 				if (nRet == RC_NO_RESOURCE)
 				{
 					//std::cout << "No resource: " << tv.tv_usec << std::endl;
-					spdlog::get("console")->debug("No resource: ");
+					log_error("No resource ");
 				}
 				else
 				{
 					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
-					spdlog::get("console")->debug("Get Failed: [error:" + std::to_string(nRet) + "]");
+					log_error("Get Failed: [error:", nRet, "]");
 				}
                 npc = 0;
             }

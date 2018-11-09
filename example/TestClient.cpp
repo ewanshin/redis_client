@@ -1,4 +1,7 @@
 #include "TestClient.hpp"
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/daily_file_sink.h>
+#include <spdlog/async.h>
 
 CTestClient::CTestClient()
 {
@@ -17,9 +20,6 @@ bool IsInContainer(const std::set<std::string> &setVal, const std::string &strVa
 
 bool CTestClient::InitStringEnv(int nDel, int nSet)
 {
-	std::stringstream stream;
-	stream << std::this_thread::get_id();
-	int thread_id = std::stoull(stream.str());
 
 	int nRet = RC_SUCCESS;
 	for (int i = 0; i < nDel && nRet >= 0; ++i)
@@ -27,7 +27,8 @@ bool CTestClient::InitStringEnv(int nDel, int nSet)
 		std::stringstream ss;
 		ss << "tk_str_" << i + 1;
 		nRet = m_redis.Del(ss.str());
-		spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CTestClient::InitStringEnv [Del " + ss.str() + "]");
+		//log_debug("CTestClient::InitStringEnv [Del tk_str_", (i + 1), "]");
+		log_debug("CTestClient::InitStringEnv [Del tk_str_", std::to_string(i), "]");
 	}
 
 	for (int i = 0; i < nSet && nRet >= 0; ++i)
@@ -36,7 +37,7 @@ bool CTestClient::InitStringEnv(int nDel, int nSet)
 		ssKey << "tk_str_" << i + 1;
 		ssVal << "value_" << i + 1;
 		nRet = m_redis.Set(ssKey.str(), ssVal.str());
-		spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CTestClient::InitStringEnv [Set " + ssKey.str() + " " + ssVal.str() + "]");
+		log_debug("CTestClient::InitStringEnv [Set ", ssKey.str(), " ", ssVal.str(), "]");
 	}
 
 	return nRet >= 0;
@@ -144,4 +145,14 @@ bool CTestClient::InitHashEnv(int nDel, int nSet)
 bool CTestClient::GetTime(struct timeval &tmVal)
 {
 	return m_redis.Time(&tmVal) == RC_SUCCESS;
+}
+
+bool CTestClient::StartTest(const std::string &strHost, int port)
+{
+	console_logger_ = spdlog::stdout_color_mt("console");
+	file_logger_ = spdlog::daily_logger_mt<spdlog::async_factory>("result", "result.log");
+
+	spdlog::set_level(spdlog::level::trace);
+	log_debug("Logger created");
+	return true;
 }

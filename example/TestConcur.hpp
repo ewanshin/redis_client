@@ -13,10 +13,8 @@ public:
 		a++;
 		a++;
 	};
-	bool StartTest(const std::string &strHost, int port);
+	virtual bool StartTest(const std::string &strHost, int port);
 
-	std::shared_ptr<spdlog::logger> console_;
-	std::shared_ptr<spdlog::logger> file_logger_;
 
 private:
     void Test_GetS();
