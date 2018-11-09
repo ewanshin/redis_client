@@ -54,11 +54,6 @@ public:
 
 	inline bool ReadLock() 
 	{
-		//std::stringstream stream;
-		//stream << std::this_thread::get_id();
-		//int thread_id = std::stoull(stream.str());
-
-		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadLock");
 		AcquireSRWLockShared(m_pLock);
 		m_bLocked = true;
 		return m_bLocked;
@@ -66,69 +61,16 @@ public:
 
 	inline bool WriteLock()
 	{
-		//std::stringstream stream;
-		//stream << std::this_thread::get_id();
-		//int thread_id = std::stoull(stream.str());
-
-		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteLock");
 		AcquireSRWLockExclusive(m_pLock);
 		m_bLocked = true;
 		return m_bLocked;
 	}
 
-	inline bool TryReadLock()
-	{
-		//std::stringstream stream;
-		//stream << std::this_thread::get_id();
-		//int thread_id = std::stoull(stream.str());
+	inline bool TryReadLock(){ return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == TRUE)); }
+	inline bool TryWriteLock(){ return (m_bLocked = (TryAcquireSRWLockExclusive(m_pLock) == TRUE)); }
 
-		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]TryReadLock");
-		return (m_bLocked = (TryAcquireSRWLockShared(m_pLock) == TRUE));
-	}
-	inline bool TryWriteLock()
-	{
-		//std::stringstream stream;
-		//stream << std::this_thread::get_id();
-		//int thread_id = std::stoull(stream.str());
-
-		//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]TryWriteLock");
-		return (m_bLocked = (TryAcquireSRWLockExclusive(m_pLock) == TRUE));
-	}
-	inline void WriteUnlock() 
-	{
-		std::stringstream stream;
-		stream << std::this_thread::get_id();
-		int thread_id = std::stoull(stream.str());
-
-		if (true == m_bLocked)
-		{
-			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteUnlock");
-			//if (m_pLock->Ptr)
-				ReleaseSRWLockExclusive(m_pLock);
-				
-		}
-		else
-		{
-			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]WriteUnlock not locked");
-		}
-	}
-	inline void ReadUnlock() 
-	{
-		std::stringstream stream;
-		stream << std::this_thread::get_id();
-		int thread_id = std::stoull(stream.str());
-
-		if (m_bLocked)
-		{
-			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadUnlock");
-			//if (m_pLock->Ptr)
-				ReleaseSRWLockShared(m_pLock);
-		}
-		else
-		{
-			//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]ReadUnlock not locked");
-		}
-	}
+	inline void WriteUnlock() { if (true == m_bLocked) ReleaseSRWLockExclusive(m_pLock); };
+	inline void ReadUnlock() { if (m_bLocked)ReleaseSRWLockShared(m_pLock); }
 
 	inline void lock() { WriteLock(); }
 	inline void unlock() { WriteUnlock(); }

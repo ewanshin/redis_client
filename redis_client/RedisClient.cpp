@@ -1,6 +1,6 @@
 ﻿#include "redis_client/RedisClient.hpp"
 #include <WinSock2.h>
-#include <spdlog/spdlog.h>
+//#include <spdlog/spdlog.h>
 
 #define BIND_INT(val) std::bind(&FetchInteger, std::placeholders::_1, val)
 #define BIND_STR(val) std::bind(&FetchString, std::placeholders::_1, val)
@@ -716,7 +716,7 @@ bool CRedisConnection::Reconnect()
 		ConnectToRedis(m_pRedisServ->m_strHost, m_pRedisServ->m_nPort, m_pRedisServ->m_nCliTimeout))
 		return true;
 
-	if (0 < m_pRedisServ->m_vecHosts.size())
+	//if (0 < m_pRedisServ->m_vecHosts.size())
 	{
 		for (auto &hostPair : m_pRedisServ->m_vecHosts)
 		{
@@ -797,7 +797,7 @@ bool CRedisServer::Initialize()
             m_queIdleConn.push(pRedisConn);
     }
 
-/*    if (!m_queIdleConn.empty())
+    if (!m_queIdleConn.empty())
     {
         std::vector<std::string> vecTimeout;
         //CRedisCommand redisCmd("config");
@@ -807,10 +807,9 @@ bool CRedisServer::Initialize()
 			redisCmd.FetchResult(BIND_VSTR(&vecTimeout)) == RC_SUCCESS &&
 			vecTimeout.size() == 2)
 		{
-
 			m_nSerTimeout = atoi(vecTimeout[1].c_str());
 		}
-    }*/
+    }
     return !m_queIdleConn.empty();
 }
 
@@ -937,12 +936,10 @@ void CRedisClient::operator()()
 			if (m_bValid)
 			{
 				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() wait start]");
-				//spdlog::get("console")->flush();
 				m_condAny.wait(safeLock);
 				
 
 				spdlog::get("console")->warn("[thread:" + std::to_string(thread_id) + "]CRedisClient::operator()() wait end]");
-				//spdlog::get("console")->flush();
 			}
 			else
 			{
@@ -1972,6 +1969,10 @@ int CRedisClient::Time(timeval *ptmVal)
 
 int CRedisClient::ExecuteImpl(const std::string &strCmd, int nSlot, TFuncFetch funcFetch, TFuncConvert funcConv)
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+
     CRedisCommand *pRedisCmd = new CRedisCommand(strCmd);
 //    pRedisCmd->SetArgs();
     pRedisCmd->SetSlot(nSlot);
@@ -1980,17 +1981,11 @@ int CRedisClient::ExecuteImpl(const std::string &strCmd, int nSlot, TFuncFetch f
 	if (nRet == RC_SUCCESS)
 	{
 		//std::cout << "CRedisClient::ExecuteImpl [command:" << strCmd.c_str() << "][slot:" << std::to_string(nSlot) << "]" << std::endl;
-		std::stringstream stream;
-		stream << std::this_thread::get_id();
-		int thread_id = std::stoull(stream.str());
-		spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]CRedisClient::ExecuteImpl [command:" + strCmd.c_str() + "][slot:" + std::to_string(nSlot) + "]");
+//		spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]CRedisClient::ExecuteImpl [command:" + strCmd.c_str() + "][slot:" + std::to_string(nSlot) + "]");
 		nRet = pRedisCmd->FetchResult(funcFetch);
 	}
 	else
 	{
-		std::stringstream stream;
-		stream << std::this_thread::get_id();
-		int thread_id = std::stoull(stream.str());
 		spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::ExecuteImpl failed[command:" + strCmd.c_str() + "][slot:" + std::to_string(nSlot) + "]");
 		//std::cout << "CRedisClient::ExecuteImpl failed [command:" << strCmd.c_str() << "][slot:" << std::to_string(nSlot) << "]" << std::endl;
 	}
@@ -2176,8 +2171,7 @@ int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 	int thread_id = std::stoull(stream.str());
 
 	CSafeLock safeLock(&m_rwLock);
-	//if (!safeLock.ReadLock() || !m_bValid)
-	if (!safeLock.TryReadLock() || !m_bValid)
+	if (!safeLock.ReadLock() || !m_bValid)
 	{
 		if (false == m_bValid)
 		{
@@ -2192,7 +2186,6 @@ int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 		return RC_RQST_ERR;
 	}
 
-	//spdlog::get("console")->error("[thread:" + std::to_string(thread_id) + "]CRedisClient::SimpleExecute try readlock and true");
 	CRedisServer *pRedisServ = GetMatchedServer(pRedisCmd);
 	safeLock.ReadUnlock();
     return pRedisServ ? pRedisServ->ServRequest(pRedisCmd) : RC_RQST_ERR;
@@ -2234,6 +2227,11 @@ CRedisServer * CRedisClient::GetMatchedServer(const CRedisCommand *pRedisCmd) co
 
 CRedisServer * CRedisClient::FindServer(int nSlot) const
 {
+	//auto pairIter = std::equal_range(m_vecSlot.begin(), m_vecSlot.end(), nSlot, CompSlot());
+	//if (pairIter.first != m_vecSlot.end() && pairIter.first != pairIter.second)
+	//	return pairIter.first->pRedisServ;
+	//else
+	//	return nullptr;
 	for (auto elm : m_vecSlot)
 	{
 		if (elm.nStartSlot <= nSlot && nSlot < elm.nEndSlot)

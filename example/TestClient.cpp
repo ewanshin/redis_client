@@ -17,12 +17,17 @@ bool IsInContainer(const std::set<std::string> &setVal, const std::string &strVa
 
 bool CTestClient::InitStringEnv(int nDel, int nSet)
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+
 	int nRet = RC_SUCCESS;
 	for (int i = 0; i < nDel && nRet >= 0; ++i)
 	{
 		std::stringstream ss;
 		ss << "tk_str_" << i + 1;
 		nRet = m_redis.Del(ss.str());
+		spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CTestClient::InitStringEnv [Del " + ss.str() + "]");
 	}
 
 	for (int i = 0; i < nSet && nRet >= 0; ++i)
@@ -31,6 +36,7 @@ bool CTestClient::InitStringEnv(int nDel, int nSet)
 		ssKey << "tk_str_" << i + 1;
 		ssVal << "value_" << i + 1;
 		nRet = m_redis.Set(ssKey.str(), ssVal.str());
+		spdlog::get("console")->debug("[thread:" + std::to_string(thread_id) + "]CTestClient::InitStringEnv [Set " + ssKey.str() + " " + ssVal.str() + "]");
 	}
 
 	return nRet >= 0;

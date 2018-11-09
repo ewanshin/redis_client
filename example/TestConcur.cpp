@@ -1,4 +1,7 @@
 #include "TestConcur.hpp"
+#include <spdlog/sinks/stdout_color_sinks.h>
+//#include <spdlog/sinks/daily_file_sink.h>
+//#include <spdlog/async.h>
 
 //#define NUM_DEF 150
 #define NUM_DEF 0
@@ -9,13 +12,11 @@ CTestConcur::CTestConcur()
 
 bool CTestConcur::StartTest(const std::string &strHost, int port)
 {
-	spdlog::set_async_mode(8192, spdlog::async_overflow_policy::block_retry,
-		nullptr, std::chrono::seconds(1), nullptr);
 	console_ = spdlog::stdout_color_mt("console");
-	spdlog::set_level(spdlog::level::trace);
+	console_->set_level(spdlog::level::trace);
 	spdlog::get("console")->debug("Logger created");
-	spdlog::get("console")->flush();
-    if (!m_redis.Initialize(strHost, port, 5, 5, 100))
+
+	if (!m_redis.Initialize(strHost, port, 5, 5, 20))
     {
         //std::cout << "Connect to redis failed" << std::endl;
 		console_->info("Connect to redis failed");
@@ -81,6 +82,10 @@ void CTestConcur::Test_GetS()
 
 void CTestConcur::Test_Get()
 {
+	std::stringstream stream;
+	stream << std::this_thread::get_id();
+	int thread_id = std::stoull(stream.str());
+
 	//struct timeval tv;
 	//struct timezone tz;
 
@@ -98,10 +103,7 @@ void CTestConcur::Test_Get()
             if (++npc > NUM_DEF)
             {
                 //std::cout << "Get OK: " << strVal << std::endl;
-				std::stringstream stream;
-				stream << std::this_thread::get_id();
-				int thread_id = std::stoull(stream.str());
-				//spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
+				spdlog::get("console")->trace("[thread:" + std::to_string(thread_id) + "]Get OK [key:" + ss.str() + "][value:" + strVal + "]");
                 npc = 0;
             }
             m_mutex.unlock();
