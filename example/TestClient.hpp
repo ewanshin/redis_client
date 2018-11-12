@@ -49,18 +49,14 @@ public:
 
 		std::ostringstream stream;
 		using List = int[];
-		//stream << "[thread:" << thread_id << "]";
-		//(void)List{
-		//	3, ((void)(stream << args), 0) ...
-		//};
 		(void)List{
 			0, ((void)(stream << args), 0) ...
 		};
 
 		//console_logger_->log(level, stream.str());
 		//file_logger_->log(level, stream.str());
-		spdlog::get("console")->log(level, stream.str());
-		spdlog::get("result")->log(level, stream.str());
+		spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+		spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
 	}
 
 protected:
