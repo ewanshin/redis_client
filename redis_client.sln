@@ -10,10 +10,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example", "example\example.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "redis_client", "redis_client\redis_client.vcxproj", "{08EC3E77-AF0D-4C92-99F9-1A1271CEC815}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win32_interop", "..\reference\hiredis_ms\msvs\vs-solutions\vs2013\win32_interop.vcxproj", "{8C07F811-C81C-432C-B334-1AE6FAECF951}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hiredis", "..\reference\hiredis_ms\msvs\vs-solutions\vs2013\hiredis.vcxproj", "{13E85053-54B3-487B-8DDB-3430B1C1B3BF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -38,22 +34,6 @@ Global
 		{08EC3E77-AF0D-4C92-99F9-1A1271CEC815}.Release|Win32.Build.0 = Release|Win32
 		{08EC3E77-AF0D-4C92-99F9-1A1271CEC815}.Release|x64.ActiveCfg = Release|x64
 		{08EC3E77-AF0D-4C92-99F9-1A1271CEC815}.Release|x64.Build.0 = Release|x64
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Debug|Win32.ActiveCfg = Debug|Win32
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Debug|Win32.Build.0 = Debug|Win32
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Debug|x64.ActiveCfg = Debug|x64
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Debug|x64.Build.0 = Debug|x64
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Release|Win32.ActiveCfg = Release|Win32
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Release|Win32.Build.0 = Release|Win32
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Release|x64.ActiveCfg = Release|x64
-		{8C07F811-C81C-432C-B334-1AE6FAECF951}.Release|x64.Build.0 = Release|x64
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Debug|Win32.ActiveCfg = Debug|Win32
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Debug|Win32.Build.0 = Debug|Win32
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Debug|x64.ActiveCfg = Debug|x64
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Debug|x64.Build.0 = Debug|x64
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Release|Win32.ActiveCfg = Release|Win32
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Release|Win32.Build.0 = Release|Win32
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Release|x64.ActiveCfg = Release|x64
-		{13E85053-54B3-487B-8DDB-3430B1C1B3BF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

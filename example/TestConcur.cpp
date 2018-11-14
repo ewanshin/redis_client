@@ -1,7 +1,8 @@
 #include "TestConcur.hpp"
 
 //#define NUM_DEF 150
-#define NUM_DEF 0
+#define NUM_DEF 50
+//#define NUM_DEF 0
 
 CTestConcur::CTestConcur()
 {
@@ -12,7 +13,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	CTestClient::StartTest(strHost, port);
 
 
-	if (!m_redis.Initialize(strHost, port, 5, 5, 20))
+	if (!m_redis.Initialize(strHost, port, 5, 5, 100))
     {
 		log_error("Connect to redis failed [ip:", strHost, "][port:", port, "]");
         return false;

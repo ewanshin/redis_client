@@ -22,15 +22,15 @@ const char *const AUTH_CMD = NULL;
 int main(void) 
 {
 	std::string strHost = "10.75.17.135";
-	//std::string strHost = "10.113.113.36";
 	unsigned int port = 30001;
-	//int port = 17001;
+	//std::string strHost = "10.113.113.36";	
+	//unsigned int port = 17001;
 
 	while (1)
 	{
-/*		CTestBase testBase;
+		CTestBase testBase;
 		if (!testBase.StartTest(strHost, port))
-			break;*/
+			break;
 
 		//CTestGeneric testKeys;
 		//if (!testKeys.StartTest(strHost))
@@ -56,9 +56,9 @@ int main(void)
 		if (!testZset.StartTest(strHost, port))
 			break;*/
 
-		CTestConcur testConcur;
-		if (!testConcur.StartTest(strHost, port))
-		    break;
+		//CTestConcur testConcur;
+		//if (!testConcur.StartTest(strHost, port))
+		//    break;
 
 		break;
 	}

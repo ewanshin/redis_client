@@ -6,6 +6,8 @@ CTestBase::CTestBase()
 
 bool CTestBase::StartTest(const std::string &strHost, int port)
 {
+	CTestClient::StartTest(strHost, port);
+
 	bool bSuccess = false;
 	std::cout << "start to test base command" << std::endl;
 	if (!m_redis.Initialize(strHost, port, 5, 5, 10))
