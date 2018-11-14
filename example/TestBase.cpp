@@ -20,7 +20,7 @@ bool CTestBase::StartTest(const std::string &strHost, int port)
 			Test_Smembers() && Test_Zrange() && Test_Hget();
 	}
 
-	std::cout << std::endl;
+	log_info("TestBase end");
 	return bSuccess;
 }
 

@@ -628,6 +628,7 @@ CRedisConnection::~CRedisConnection(){
 
 	if (m_pContext)
         redisFree(m_pContext);
+//	delete m_pRedisServ;
 	m_pRedisServ = nullptr;
 }
 int CRedisConnection::ConnRequest(CRedisCommand *pRedisCmd)
@@ -825,7 +826,7 @@ CRedisClient::CRedisClient()
     pthread_rwlockattr_setkind_np(&m_rwAttr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&m_rwLock, &m_rwAttr);
 #else
-//    pthread_rwlock_init(&m_rwLock, nullptr);
+	//pthread_rwlock_init(&m_rwLock, nullptr);
 	InitializeSRWLock(&m_rwLock);
 #endif
 }
@@ -842,60 +843,59 @@ CRedisClient::~CRedisClient()
     }
     if (m_pThread)
     {
-        m_pThread->join();
-        delete m_pThread;
+		m_pThread->join();
+		delete m_pThread;
+		m_pThread = nullptr;
     }
 
     CleanServer();
 #if defined(linux) || defined(__linux) || defined(__linux__)
-    pthread_rwlockattr_destroy(&m_rwAttr);
+	pthread_rwlockattr_destroy(&m_rwAttr);
 #endif
 	//pthread_rwlock_destroy(&m_rwLock);
-	
 }
 
 bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
 {
-    std::string::size_type nPos = strHost.find(':');
-    m_strHost = (nPos == std::string::npos) ? strHost : strHost.substr(0, nPos);
-    m_nPort = (nPos == std::string::npos) ? nPort : atoi(strHost.substr(nPos + 1).c_str());
-    m_nClientTimeout = nClientTimeout;
+	std::string::size_type nPos = strHost.find(':');
+	m_strHost = (nPos == std::string::npos) ? strHost : strHost.substr(0, nPos);
+	m_nPort = (nPos == std::string::npos) ? nPort : atoi(strHost.substr(nPos + 1).c_str());
+	m_nClientTimeout = nClientTimeout;
 	m_nServerTimeout = nServerTimeout;
-    m_nConnNum = nConnNum;
+	m_nConnNum = nConnNum;
 	if (m_strHost.empty() || m_nPort <= 0 || m_nClientTimeout <= 0 || m_nServerTimeout <= 0 || m_nConnNum <= 0)
-        return false;
+		return false;
 
     CRedisServer *pRedisServ = new CRedisServer(m_strHost, m_nPort, m_nClientTimeout, m_nServerTimeout, m_nConnNum);
     if (!pRedisServ->IsValid())
         return false;
 
-    std::string strInfo;
-    std::map<std::string, std::string> mapInfo;
-    CRedisCommand redisCmd("info");
-    //redisCmd.SetArgs();
-    if (pRedisServ->ServRequest(&redisCmd) != RC_SUCCESS ||
-        redisCmd.FetchResult(BIND_STR(&strInfo)) != RC_SUCCESS ||
-        !ConvertToMapInfo(strInfo, mapInfo))
-        return false;
+	std::string strInfo;
+	std::map<std::string, std::string> mapInfo;
+	CRedisCommand redisCmd("info");
+	//redisCmd.SetArgs();
+	if (pRedisServ->ServRequest(&redisCmd) != RC_SUCCESS ||
+		redisCmd.FetchResult(BIND_STR(&strInfo)) != RC_SUCCESS ||
+		!ConvertToMapInfo(strInfo, mapInfo))
+		return false;
 
-    auto it = mapInfo.find("cluster_enabled");
-    if (it == mapInfo.end())
-        return false;
-    else
-        m_bCluster = (bool)atoi(it->second.c_str());
+	auto it = mapInfo.find("cluster_enabled");
+	if (it == mapInfo.end())
+		return false;
+	else
+		m_bCluster = (bool)atoi(it->second.c_str());
 
-    m_vecRedisServ.push_back(pRedisServ);
-    m_bValid = (m_bCluster ? LoadClusterSlots() : LoadSlaveInfo(mapInfo)) &&
-        (m_pThread = new std::thread(std::bind(&CRedisClient::operator(), this))) != nullptr;
-
-    return m_bValid;
+	m_vecRedisServ.push_back(pRedisServ);
+	m_bValid = (m_bCluster ? LoadClusterSlots() : LoadSlaveInfo(mapInfo)) && 
+		(m_pThread = new std::thread(std::bind(&CRedisClient::operator(), this))) != nullptr;
+	return m_bValid;
 }
 
 void CRedisClient::operator()()
 {
 	while (!m_bExit)
-    {
-        {
+	{
+		{
 			CSafeLock safeLock(&m_rwLock);
 			safeLock.WriteLock();
 
@@ -904,13 +904,13 @@ void CRedisClient::operator()()
 				m_condAny.wait(safeLock);
 			}
 		
-            m_bValid = m_bCluster ? LoadClusterSlots() : m_vecRedisServ[0]->Initialize();
+			m_bValid = m_bCluster ? LoadClusterSlots() : m_vecRedisServ[0]->Initialize();
 			safeLock.WriteUnlock();
-        }
+		}
 
-        if (!m_bValid)
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+		if (!m_bValid)
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
 }
 
 /* interfaces for generic */
@@ -2014,14 +2014,14 @@ bool CRedisClient::LoadClusterSlots()
 
 bool CRedisClient::WaitForRefresh()
 {
-    {
+	{
 		CSafeLock safeLock(&m_rwLock);
 		if (safeLock.TryReadLock())
 		{
 			m_condAny.notify_all();
 		}
 		safeLock.ReadUnlock();
-    }
+	}
 
     int nRetry = WAIT_RETRY_TIMES;
     while (!m_bValid && nRetry-- > 0)

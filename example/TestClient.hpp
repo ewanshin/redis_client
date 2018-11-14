@@ -32,6 +32,7 @@ class CTestClient
 {
 public:
     CTestClient();
+	virtual ~CTestClient();
 
 	template<typename ... Args>	inline void log_trace(Args const& ... args) { log(spdlog::level::trace, args...); }
 	template<typename ... Args>	inline void log_debug(Args const& ... args) { log(spdlog::level::debug, args...); }
@@ -71,7 +72,7 @@ protected:
     bool GetTime(struct timeval &tmVal);
 
 protected:
-    CRedisClient m_redis;
+	CRedisClient m_redis;
 	std::shared_ptr<spdlog::logger> console_logger_;
 	std::shared_ptr<spdlog::logger> file_logger_;
 };

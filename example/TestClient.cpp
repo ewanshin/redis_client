@@ -7,6 +7,14 @@ CTestClient::CTestClient()
 {
 }
 
+CTestClient::~CTestClient()
+{
+	//console_logger_->debug("ENd");
+	//console_logger_->flush();
+	//file_logger_->flush();
+	spdlog::shutdown();
+}
+
 bool CTestClient::PrintResult(const std::string &strCmd, bool bSuccess)
 {
 	std::cout << "test " << strCmd << (bSuccess ? " success" : " failed") << std::endl;
@@ -88,7 +96,6 @@ bool CTestClient::InitSetEnv(int nDel, int nSet)
 			nRet = m_redis.Sadd(ssKey.str(), ssVal.str());
 		}
 	}
-
 	return nRet >= 0;
 }
 
