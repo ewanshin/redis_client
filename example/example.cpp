@@ -28,9 +28,9 @@ int main(void)
 
 	while (1)
 	{
-		CTestBase testBase;
-		if (!testBase.StartTest(strHost, port))
-			break;
+		//CTestBase testBase;
+		//if (!testBase.StartTest(strHost, port))
+		//	break;
 
 		//CTestGeneric testKeys;
 		//if (!testKeys.StartTest(strHost))
@@ -56,9 +56,9 @@ int main(void)
 		if (!testZset.StartTest(strHost, port))
 			break;*/
 
-		//CTestConcur testConcur;
-		//if (!testConcur.StartTest(strHost, port))
-		//    break;
+		CTestConcur testConcur;
+		if (!testConcur.StartTest(strHost, port))
+			break;
 
 		break;
 	}

@@ -7,14 +7,7 @@ class CTestConcur : public CTestClient
 {
 public:
     CTestConcur();
-	~CTestConcur()
-	{
-		int a = 0;
-		a++;
-		a++;
-	};
 	virtual bool StartTest(const std::string &strHost, int port);
-
 
 private:
     void Test_GetS();

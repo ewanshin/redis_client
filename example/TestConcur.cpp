@@ -13,7 +13,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	CTestClient::StartTest(strHost, port);
 
 
-	if (!m_redis.Initialize(strHost, port, 5, 5, 100))
+	if (!m_redis.Initialize(strHost, port, 3, 3, 10))
     {
 		log_error("Connect to redis failed [ip:", strHost, "][port:", port, "]");
         return false;

@@ -9,9 +9,6 @@ CTestClient::CTestClient()
 
 CTestClient::~CTestClient()
 {
-	//console_logger_->debug("ENd");
-	//console_logger_->flush();
-	//file_logger_->flush();
 	spdlog::shutdown();
 }
 
