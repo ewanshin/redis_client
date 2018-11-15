@@ -250,7 +250,7 @@ public:
 	int Mget(const std::vector<std::string> &vecKey, std::vector<std::string> *pvecVal);
 	int Mset(const std::vector<std::string> &vecKey, const std::vector<std::string> &vecVal);
 	int Psetex(const std::string &strKey, long nMilliSec, const std::string &strVal);
-	int Set(const std::string &strKey, const std::string &strVal);
+	int Set(const std::string &strKey, const std::string &strVal, unsigned int expired = 0);
 	int Setbit(const std::string &strKey, long nOffset, bool bVal);
 	int Setex(const std::string &strKey, long nSec, const std::string &strVal);
 	int Setnx(const std::string &strKey, const std::string &strVal);
@@ -335,6 +335,11 @@ public:
 
 	/* interfaces for system */
 	int Time(struct timeval *ptmVal);
+
+	/* interface for transaction */
+	int Watch(const std::string &strKey);
+	int Multi(const std::string &strKey);
+	int Exec(const std::string &strKey);
 
 private:
     static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);

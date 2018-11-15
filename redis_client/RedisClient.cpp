@@ -1276,10 +1276,14 @@ int CRedisClient::Psetex(const std::string &strKey, long nMilliSec, const std::s
     //return ExecuteImpl("psetex", strKey, ConvertToString(nMilliSec), strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
 }
 
-int CRedisClient::Set(const std::string &strKey, const std::string &strVal)
+int CRedisClient::Set(const std::string &strKey, const std::string &strVal, unsigned int expired)
 {
 	std::string command = "set " + strKey + " " + strVal;
-    //return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
+	if (0 < expired)
+	{
+		command = "set " + strKey + " " + strVal + " PX " + std::to_string(expired);
+	}
+	//return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
 	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 }
 
@@ -2140,4 +2144,22 @@ CRedisServer * CRedisClient::FindServer(const std::vector<CRedisServer *> &vecRe
 bool CRedisClient::InSameNode(const std::string &strKey1, const std::string &strKey2)
 {
     return m_bCluster ? FindServer(HASH_SLOT(strKey1)) == FindServer(HASH_SLOT(strKey2)) : true;
+}
+
+int CRedisClient::Watch(const std::string &strKey)
+{
+	std::string command = "watch " + strKey;
+	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
+
+int CRedisClient::Multi(const std::string &strKey)
+{
+	std::string command = "multi ";
+	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
+
+int CRedisClient::Exec(const std::string &strKey)
+{
+	std::string command = "exec";
+	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_MAP(nullptr));
 }
