@@ -35,3 +35,5 @@ Debug/
 example/tmp/
 redis_client/tmp/
 *.pdb
+*.opendb
+*.db
