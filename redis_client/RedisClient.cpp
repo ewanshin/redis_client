@@ -1,5 +1,4 @@
 ﻿#include "redis_client/RedisClient.hpp"
-#include <WinSock2.h>
 
 #define BIND_INT(val) std::bind(&FetchInteger, std::placeholders::_1, val)
 #define BIND_STR(val) std::bind(&FetchString, std::placeholders::_1, val)
@@ -55,7 +54,7 @@ uint16_t CRC16(const char *pszData, int nLen)
     return nCrc;
 }
 
-uint32_t HASH_SLOT(const std::string &strKey)
+uint32_t CRedisClient::HASH_SLOT(const std::string &strKey)
 {
     const char *pszKey = strKey.data();
     size_t nKeyLen = strKey.size();
@@ -164,8 +163,9 @@ public:
     StuResConv(const std::string &strVal) : m_strVal(strVal) {}
     int operator()(int nRet, redisReply *pReply)
     {
-        if (nRet == RC_SUCCESS && m_strVal != pReply->str)
-            return RC_REPLY_ERR;
+        //if (nRet == RC_SUCCESS && m_strVal != pReply->str)
+		if (nRet == RC_SUCCESS && m_strVal != pReply->str && std::string("QUEUED") != pReply->str)
+			return RC_REPLY_ERR;
         return nRet;
     }
 
@@ -816,6 +816,13 @@ int CRedisServer::ServRequest(CRedisCommand *pRedisCmd)
     return nRet;
 }
 
+int CRedisServer::ServRequest(CRedisConnection* connection, CRedisCommand *pRedisCmd)
+{
+	int nRet = connection->ConnRequest(pRedisCmd);
+	return nRet;
+}
+
+
 // CRedisClient methods
 CRedisClient::CRedisClient()
 	: m_nPort(-1), m_nClientTimeout(-1), m_nServerTimeout(-1), m_nConnNum(-1), m_bCluster(false),
@@ -1285,6 +1292,17 @@ int CRedisClient::Set(const std::string &strKey, const std::string &strVal, unsi
 	}
 	//return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
 	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
+}
+
+int CRedisClient::Set(CRedisConnection* connection, const std::string &strKey, const std::string &strVal, unsigned int expired)
+{
+	std::string command = "set " + strKey + " " + strVal;
+	if (0 < expired)
+	{
+		command = "set " + strKey + " " + strVal + " PX " + std::to_string(expired);
+	}
+	//return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 }
 
 int CRedisClient::Setbit(const std::string &strKey, long nOffset, bool bVal)
@@ -1926,6 +1944,22 @@ int CRedisClient::ExecuteImpl(const std::string &strCmd, int nSlot, TFuncFetch f
     return nRet;
 }
 
+int CRedisClient::ExecuteImpl(CRedisConnection* connection, const std::string &strCmd, int nSlot, TFuncFetch funcFetch, TFuncConvert funcConv)
+{
+	CRedisCommand *pRedisCmd = new CRedisCommand(strCmd);
+	//    pRedisCmd->SetArgs();
+	pRedisCmd->SetSlot(nSlot);
+	pRedisCmd->SetConvFunc(funcConv);
+	int nRet = Execute(connection, pRedisCmd);
+	if (nRet == RC_SUCCESS)
+	{
+		//std::cout << "CRedisClient::ExecuteImpl [command:" << strCmd.c_str() << "][slot:" << std::to_string(nSlot) << "]" << std::endl;
+		nRet = pRedisCmd->FetchResult(funcFetch);
+	}
+	delete pRedisCmd;
+	return nRet;
+}
+
 // private methods
 bool CRedisClient::LoadSlaveInfo(const std::map<std::string, std::string> &mapInfo)
 {
@@ -2066,6 +2100,28 @@ int CRedisClient::Execute(CRedisCommand *pRedisCmd)
     return nRet;
 }
 
+int CRedisClient::Execute(CRedisConnection* connection, CRedisCommand *pRedisCmd)
+{
+	if (!m_bValid)
+		return RC_RQST_ERR;
+
+	int nRet = SimpleExecute(connection, pRedisCmd);
+	if (!m_bCluster)
+	{
+		if (nRet == RC_RQST_ERR && WaitForRefresh())
+			return SimpleExecute(connection, pRedisCmd);
+	}
+	else
+	{
+		if ((nRet == RC_REPLY_ERR && pRedisCmd->IsMovedErr()) || nRet == RC_RQST_ERR)
+		{
+			if (WaitForRefresh())
+				return SimpleExecute(connection, pRedisCmd);
+		}
+	}
+	return nRet;
+}
+
 int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 {
 	CSafeLock safeLock(&m_rwLock);
@@ -2079,6 +2135,21 @@ int CRedisClient::SimpleExecute(CRedisCommand *pRedisCmd)
 	safeLock.ReadUnlock();
     return pRedisServ ? pRedisServ->ServRequest(pRedisCmd) : RC_RQST_ERR;
 }
+
+int CRedisClient::SimpleExecute(CRedisConnection* connection, CRedisCommand *pRedisCmd)
+{
+	CSafeLock safeLock(&m_rwLock);
+	if (!safeLock.ReadLock() || !m_bValid)
+	{
+		safeLock.ReadUnlock();
+		return RC_RQST_ERR;
+	}
+
+	CRedisServer *pRedisServ = GetMatchedServer(pRedisCmd);
+	safeLock.ReadUnlock();
+	return pRedisServ ? pRedisServ->ServRequest(connection, pRedisCmd) : RC_RQST_ERR;
+}
+
 
 bool CRedisClient::ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal)
 {
@@ -2152,14 +2223,44 @@ int CRedisClient::Watch(const std::string &strKey)
 	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
+int CRedisClient::Watch(CRedisConnection* connection, const std::string &strKey)
+{
+	std::string command = "watch " + strKey;
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
+
 int CRedisClient::Multi(const std::string &strKey)
 {
 	std::string command = "multi ";
 	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
+int CRedisClient::Multi(CRedisConnection* connection, const std::string &strKey)
+{
+	std::string command = "multi ";
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
+
 int CRedisClient::Exec(const std::string &strKey)
 {
 	std::string command = "exec";
 	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_MAP(nullptr));
+}
+
+int CRedisClient::Exec(CRedisConnection* connection, const std::string &strKey)
+{
+	std::string command = "exec";
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_MAP(nullptr));
+}
+
+
+CRedisConnection* CRedisClient::AttachConnection(int slot)
+{
+	
+	return FindServer(slot)->FetchConnection();
+}
+
+void CRedisClient::DetachConnection(int slot, CRedisConnection* connection)
+{
+	FindServer(slot)->ReturnConnection(connection);
 }

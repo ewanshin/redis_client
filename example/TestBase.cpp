@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "TestBase.hpp"
 
 CTestBase::CTestBase()

@@ -1,8 +1,6 @@
 ﻿#ifndef REDIS_CLIENT_H
 #define REDIS_CLIENT_H
 
-#define _X86_
-
 #include "hiredis/hiredis.h"
 #include <string>
 #include <vector>
@@ -181,7 +179,7 @@ public:
 
     // for the blocking request
     int ServRequest(CRedisCommand *pRedisCmd);
-
+	int ServRequest(CRedisConnection* connection, CRedisCommand *pRedisCmd);
 
 private:
     bool Initialize();
@@ -211,6 +209,9 @@ public:
 	bool Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum);
 	bool IsCluster() { return m_bCluster; }
 
+	CRedisConnection* AttachConnection(int slot);
+	void DetachConnection(int slot, CRedisConnection* connection);
+	uint32_t HASH_SLOT(const std::string &strKey);
 
 	/* interfaces for generic */
 	int Del(const std::string &strKey, long *pnVal = nullptr);
@@ -251,6 +252,7 @@ public:
 	int Mset(const std::vector<std::string> &vecKey, const std::vector<std::string> &vecVal);
 	int Psetex(const std::string &strKey, long nMilliSec, const std::string &strVal);
 	int Set(const std::string &strKey, const std::string &strVal, unsigned int expired = 0);
+	int Set(CRedisConnection* connection, const std::string &strKey, const std::string &strVal, unsigned int expired = 0);
 	int Setbit(const std::string &strKey, long nOffset, bool bVal);
 	int Setex(const std::string &strKey, long nSec, const std::string &strVal);
 	int Setnx(const std::string &strKey, const std::string &strVal);
@@ -338,8 +340,11 @@ public:
 
 	/* interface for transaction */
 	int Watch(const std::string &strKey);
+	int Watch(CRedisConnection* connection, const std::string &strKey);
 	int Multi(const std::string &strKey);
+	int Multi(CRedisConnection* connection, const std::string &strKey);
 	int Exec(const std::string &strKey);
+	int Exec(CRedisConnection* connection, const std::string &strKey);
 
 private:
     static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);
@@ -357,10 +362,14 @@ private:
     bool LoadClusterSlots();
     bool WaitForRefresh();
     int Execute(CRedisCommand *pRedisCmd);
+	int Execute(CRedisConnection* connection, CRedisCommand *pRedisCmd);
     int SimpleExecute(CRedisCommand *pRedisCmd);
+	int SimpleExecute(CRedisConnection* connection, CRedisCommand *pRedisCmd);
 
     int ExecuteImpl(const std::string &strCmd, int nSlot,
                    TFuncFetch funcFetch, TFuncConvert funcConv = FUNC_DEF_CONV);
+	int ExecuteImpl(CRedisConnection* connection, const std::string &strCmd, int nSlot,
+		TFuncFetch funcFetch, TFuncConvert funcConv = FUNC_DEF_CONV);
 
   //  template <typename P>
   //  int ExecuteImpl(const std::string &strCmd, const P &tArg, int nSlot, Pipeline ppLine,

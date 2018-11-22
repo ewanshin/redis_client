@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "TestSet.hpp"
 
 CTestSet::CTestSet()

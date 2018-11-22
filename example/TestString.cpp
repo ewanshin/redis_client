@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "TestString.hpp"
 
 CTestString::CTestString()

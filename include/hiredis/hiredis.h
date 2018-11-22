@@ -31,12 +31,19 @@
 
 #ifndef __HIREDIS_H
 #define __HIREDIS_H
+
+#if defined(_MSC_VER)
+#define HIREDIS_WIN 1
+#endif
+
 #include <stdio.h> /* for size_t */
 #include <stdarg.h> /* for va_list */
-#ifndef _WIN32
+
+#ifndef HIREDIS_WIN
 #include <sys/time.h> /* for struct timeval */
 #else
-#include "win32_interop/win32_types_hiredis.h"
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 #define HIREDIS_MAJOR 0
@@ -92,8 +99,6 @@
 
 #define REDIS_READER_MAX_BUF (1024*16)  /* Default max unused reader buffer. */
 
-#define REDIS_KEEPALIVE_INTERVAL 15 /* seconds */
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -101,7 +106,7 @@ extern "C" {
 /* This is the reply object returned by redisCommand() */
 typedef struct redisReply {
     int type; /* REDIS_REPLY_* */
-    PORT_LONGLONG integer; /* The integer when type is REDIS_REPLY_INTEGER */
+    long long integer; /* The integer when type is REDIS_REPLY_INTEGER */
     int len; /* Length of string */
     char *str; /* Used for both REDIS_REPLY_ERROR and REDIS_REPLY_STRING */
     size_t elements; /* number of elements, for REDIS_REPLY_ARRAY */
@@ -120,7 +125,7 @@ typedef struct redisReadTask {
 typedef struct redisReplyObjectFunctions {
     void *(*createString)(const redisReadTask*, char*, size_t);
     void *(*createArray)(const redisReadTask*, int);
-    void *(*createInteger)(const redisReadTask*, PORT_LONGLONG);
+    void *(*createInteger)(const redisReadTask*, long long);
     void *(*createNil)(const redisReadTask*);
     void (*freeObject)(void*);
 } redisReplyObjectFunctions;
@@ -133,6 +138,7 @@ typedef struct redisReader {
     char *buf; /* Read buffer */
     size_t pos; /* Buffer cursor */
     size_t len; /* Buffer length */
+
     size_t maxbuf; /* Max length of unused buffer */
 
     redisReadTask rstack[9];
@@ -177,17 +183,13 @@ typedef struct redisContext {
 } redisContext;
 
 redisContext *redisConnect(const char *ip, int port);
-redisContext *redisConnectWithTimeout(const char *ip, int port, const struct timeval tv);
+redisContext *redisConnectWithTimeout(const char *ip, int port, struct timeval tv);
 redisContext *redisConnectNonBlock(const char *ip, int port);
-redisContext *redisConnectBindNonBlock(const char *ip, int port, const char *source_addr);
 redisContext *redisConnectUnix(const char *path);
-redisContext *redisConnectUnixWithTimeout(const char *path, const struct timeval tv);
+redisContext *redisConnectUnixWithTimeout(const char *path, struct timeval tv);
 redisContext *redisConnectUnixNonBlock(const char *path);
-redisContext *redisConnectFd(int fd);
-int redisSetTimeout(redisContext *c, const struct timeval tv);
-int redisEnableKeepAlive(redisContext *c);
+int redisSetTimeout(redisContext *c, struct timeval tv);
 void redisFree(redisContext *c);
-int redisFreeKeepFd(redisContext *c);
 int redisBufferRead(redisContext *c);
 int redisBufferWrite(redisContext *c, int *done);
 
@@ -197,10 +199,6 @@ int redisBufferWrite(redisContext *c, int *done);
  * context, it will return unconsumed replies until there are no more. */
 int redisGetReply(redisContext *c, void **reply);
 int redisGetReplyFromReader(redisContext *c, void **reply);
-
-/* Write a formatted command to the output buffer. Use these functions in blocking mode
- * to get a pipeline of commands. */
-int redisAppendFormattedCommand(redisContext *c, const char *cmd, size_t len);
 
 /* Write a command to the output buffer. Use these functions in blocking mode
  * to get a pipeline of commands. */
