@@ -175,7 +175,8 @@ public:
 
     std::string GetHost() const { return m_strHost; }
     int GetPort() const { return m_nPort; }
-	bool IsValid() const { return m_queIdleConn.size() > 0 ? true : false; }
+	//bool IsValid() const { return m_queIdleConn.size() > 0 ? true : false; }
+	bool IsValid() const { return m_queIdleConn->size() > 0 ? true : false; }
 
     // for the blocking request
     int ServRequest(CRedisCommand *pRedisCmd);
@@ -194,7 +195,8 @@ private:
     int m_nSerTimeout;
     int m_nConnNum;
 
-    std::queue<CRedisConnection *> m_queIdleConn;
+    //std::queue<CRedisConnection *> m_queIdleConn;
+	std::queue<CRedisConnection *>* m_queIdleConn = nullptr;
     std::vector<std::pair<std::string, int> > m_vecHosts;
     std::mutex m_mutexConn;
 };

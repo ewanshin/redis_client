@@ -37,3 +37,5 @@ redis_client/tmp/
 *.pdb
 *.opendb
 *.db
+.vs/redis_client/v14/.suo
+ipch/

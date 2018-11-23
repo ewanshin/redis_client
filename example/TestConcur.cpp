@@ -14,7 +14,8 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	CTestClient::StartTest(strHost, port);
 
 
-	if (!m_redis.Initialize(strHost, port, 3, 3, 100))
+	//if (!m_redis.Initialize(strHost, port, 3, 3, 20))
+	if (!m_redis.Initialize(strHost, port, 3, 3, 2))
 	{
 		log_error("Connect to redis failed [ip:", strHost, "][port:", port, "]");
 		return false;
@@ -27,10 +28,10 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	}
 
 	m_bExit = false;
-	const int nGetTrdNum = 100;
-	const int nSetTrdNum = 100;
-	//const int nGetTrdNum = 1;
-	//const int nSetTrdNum = 1;
+	//const int nGetTrdNum = 20;
+	//const int nSetTrdNum = 20;
+	const int nGetTrdNum = 1;
+	const int nSetTrdNum = 1;
 	std::thread *pthreadGet[nGetTrdNum] = {nullptr};
 	std::thread *pthreadSet[nSetTrdNum] = { nullptr };
 	for (int i = 0; i < nGetTrdNum; ++i)

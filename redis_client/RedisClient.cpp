@@ -1,4 +1,5 @@
 ﻿#include "redis_client/RedisClient.hpp"
+#include <atomic>
 
 #define BIND_INT(val) std::bind(&FetchInteger, std::placeholders::_1, val)
 #define BIND_STR(val) std::bind(&FetchString, std::placeholders::_1, val)
@@ -7,6 +8,32 @@
 #define BIND_MAP(val) std::bind(&FetchMap, std::placeholders::_1, val)
 #define BIND_TIME(val) std::bind(&FetchTime, std::placeholders::_1, val)
 #define BIND_SLOT(val) std::bind(&FetchSlot, std::placeholders::_1, val)
+
+template<typename ... Args>	inline void log_trace(Args const& ... args) { log(spdlog::level::trace, args...); }
+template<typename ... Args>	inline void log_debug(Args const& ... args) { log(spdlog::level::debug, args...); }
+template<typename ... Args>	inline void log_info(Args const& ... args) { log(spdlog::level::info, args...); }
+template<typename ... Args>	inline void log_warn(Args const& ... args) { log(spdlog::level::warn, args...); }
+template<typename ... Args>	inline void log_error(Args const& ... args) { log(spdlog::level::err, args...); }
+template<typename ... Args>	inline void log_critical(Args const& ... args) { log(spdlog::level::critical, args...); }
+
+template<typename ... Args>
+void log(spdlog::level::level_enum level, Args const& ... args)
+{
+	std::stringstream thread_stream;
+	thread_stream << std::this_thread::get_id();
+	unsigned int thread_id = std::stoull(thread_stream.str());
+
+	std::ostringstream stream;
+	using List = int[];
+	(void)List {
+		0, ((void)(stream << args), 0) ...
+	};
+
+	//console_logger_->log(level, stream.str());
+	//file_logger_->log(level, stream.str());
+	spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+	spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+}
 
 // crc16 for computing redis cluster slot
 static const uint16_t crc16Table[256] =
@@ -624,8 +651,9 @@ CRedisConnection::CRedisConnection(CRedisServer *pRedisServ) : m_pContext(nullpt
 {
     Reconnect();
 }
-CRedisConnection::~CRedisConnection(){
-
+CRedisConnection::~CRedisConnection()
+{
+	log_trace("~CRedisConnection");
 	if (m_pContext)
         redisFree(m_pContext);
 //	delete m_pRedisServ;
@@ -675,6 +703,7 @@ int CRedisConnection::ConnRequest(std::vector<CRedisCommand *> &vecRedisCmd)
 
 bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int nTimeout)
 {
+	log_trace("CRedisConnection::ConnectToRedis [host:", strHost, "][port:", nPort, "][timeout:", nTimeout, "]");
 	if (m_pContext)
 	{
 		redisFree(m_pContext);
@@ -700,6 +729,7 @@ bool CRedisConnection::ConnectToRedis(const std::string &strHost, int nPort, int
 
 bool CRedisConnection::Reconnect()
 {
+	log_trace("CRedisConnection::Reconnect");
 	if (!m_pRedisServ->m_strHost.empty() &&
 		ConnectToRedis(m_pRedisServ->m_strHost, m_pRedisServ->m_nPort, m_pRedisServ->m_nCliTimeout))
 		return true;
@@ -708,7 +738,7 @@ bool CRedisConnection::Reconnect()
 	{
 		for (auto &hostPair : m_pRedisServ->m_vecHosts)
 		{
-			if (ConnectToRedis(hostPair.first, hostPair.second, m_pRedisServ->m_nCliTimeout))
+			if ( (hostPair.first, hostPair.second, m_pRedisServ->m_nCliTimeout))
 			{
 				m_pRedisServ->m_strHost = hostPair.first;
 				m_pRedisServ->m_nPort = hostPair.second;
@@ -718,6 +748,7 @@ bool CRedisConnection::Reconnect()
 	}
 
     m_pRedisServ->m_strHost.clear();
+	log_error("Reconnect host clear");
     return false;
 }
 
@@ -725,6 +756,7 @@ bool CRedisConnection::Reconnect()
 CRedisServer::CRedisServer(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
     : m_strHost(strHost), m_nPort(nPort), m_nCliTimeout(nClientTimeout), m_nSerTimeout(nServerTimeout), m_nConnNum(nConnNum)
 {
+	m_queIdleConn = new std::queue<CRedisConnection*>();
 	SetSlave(strHost, nPort);
     Initialize();
 }
@@ -737,12 +769,21 @@ CRedisServer::~CRedisServer()
 void CRedisServer::CleanConn()
 {
     m_mutexConn.lock();
-    while (!m_queIdleConn.empty())
-    {
-        delete m_queIdleConn.front();
-        m_queIdleConn.pop();
-    }
-    m_mutexConn.unlock();
+    //while (!m_queIdleConn.empty())
+    //{
+    //    delete m_queIdleConn.front();
+    //    m_queIdleConn.pop();
+    //}
+	if (m_queIdleConn)
+	{
+		while (!m_queIdleConn->empty())
+		{
+			delete m_queIdleConn->front();
+			m_queIdleConn->pop();
+		}
+
+	}
+	m_mutexConn.unlock();
 }
 
 void CRedisServer::SetSlave(const std::string &strHost, int nPort)
@@ -752,36 +793,48 @@ void CRedisServer::SetSlave(const std::string &strHost, int nPort)
 
 CRedisConnection * CRedisServer::FetchConnection()
 {
+	log_trace("CRedisServer::FetchConnection");
     CRedisConnection *pRedisConn = nullptr;
     m_mutexConn.lock();
-    if (!m_queIdleConn.empty())
-    {
-        pRedisConn = m_queIdleConn.front();
-        m_queIdleConn.pop();
-    }
+    //if (!m_queIdleConn.empty())
+    //{
+    //    pRedisConn = m_queIdleConn.front();
+    //    m_queIdleConn.pop();
+    //}
+	if (!m_queIdleConn->empty())
+	{
+		pRedisConn = m_queIdleConn->front();
+		m_queIdleConn->pop();
+	}
+
     m_mutexConn.unlock();
     return pRedisConn;
 }
 
 void CRedisServer::ReturnConnection(CRedisConnection *pRedisConn)
 {
+	log_trace("CRedisServer::ReturnConnection");
     m_mutexConn.lock();
-    m_queIdleConn.push(pRedisConn);
+    //m_queIdleConn.push(pRedisConn);
+	m_queIdleConn->push(pRedisConn);
     m_mutexConn.unlock();
 }
 
 bool CRedisServer::Initialize()
 {
+	log_trace("CRedisServer::Initialize");
     CleanConn();
 
     for (int i = 0; i < m_nConnNum; ++i)
     {
         CRedisConnection *pRedisConn = new CRedisConnection(this);
         if (pRedisConn->IsValid())
-            m_queIdleConn.push(pRedisConn);
+			m_queIdleConn->push(pRedisConn);
+            /*m_queIdleConn.push(pRedisConn);*/
     }
 
-    if (!m_queIdleConn.empty())
+    //if (!m_queIdleConn.empty())
+	if (!m_queIdleConn->empty())
     {
         std::vector<std::string> vecTimeout;
         //CRedisCommand redisCmd("config");
@@ -794,7 +847,8 @@ bool CRedisServer::Initialize()
 		//	m_nSerTimeout = atoi(vecTimeout[1].c_str());
 		//}
     }
-    return !m_queIdleConn.empty();
+    //return !m_queIdleConn.empty();
+	return !m_queIdleConn->empty();
 }
 
 int CRedisServer::ServRequest(CRedisCommand *pRedisCmd)
@@ -864,6 +918,7 @@ CRedisClient::~CRedisClient()
 
 bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
 {
+	log_trace("CRedisClient::Initialize [host:", strHost, "][port:", nPort, "]");
 	std::string::size_type nPos = strHost.find(':');
 	m_strHost = (nPos == std::string::npos) ? strHost : strHost.substr(0, nPos);
 	m_nPort = (nPos == std::string::npos) ? nPort : atoi(strHost.substr(nPos + 1).c_str());
@@ -910,7 +965,8 @@ void CRedisClient::operator()()
 			{
 				m_condAny.wait(safeLock);
 			}
-		
+			
+			log_info("CRedisClient::operator()()");
 			m_bValid = m_bCluster ? LoadClusterSlots() : m_vecRedisServ[0]->Initialize();
 			safeLock.WriteUnlock();
 		}
@@ -1996,6 +2052,7 @@ bool CRedisClient::LoadSlaveInfo(const std::map<std::string, std::string> &mapIn
 
 bool CRedisClient::LoadClusterSlots()
 {
+	log_trace("CRedisClient::LoadClusterSlots [size:", m_vecRedisServ.size(), "]");
     std::vector<CRedisServer *> vecRedisServ;
     std::vector<SlotRegion> vecSlot;
     CRedisCommand redisCmd("cluster slots");
@@ -2008,8 +2065,9 @@ bool CRedisClient::LoadClusterSlots()
         {
 			for (auto pRedisServ : vecRedisServ)
 			{
+				log_info("CRedisClient::LoadClusterSlots server not valid [host:", pRedisServ->m_strHost, "][port:", pRedisServ->m_nPort, "]");
 				delete pRedisServ;
-				//pRedisServ = nullptr;
+				pRedisServ = nullptr;
 			}
 
             return false;
@@ -2017,33 +2075,55 @@ bool CRedisClient::LoadClusterSlots()
 
         CRedisServer *pSlotServ = nullptr;
 		if (pRedisServ->ServRequest(&redisCmd) == RC_SUCCESS &&
-		    redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
+			redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
 		{
+			log_info("LoadClusterSlots cluster slot [size:", vecSlot.size(), "]");
 			if (vecSlot.size() == 0)
 			{
+				log_error("LoadClusterSlots size is 0");
 				return false;
 			}
-            for (auto &slotReg : vecSlot)
-            {
-                if (!(pSlotServ = FindServer(vecRedisServ, slotReg.strHost, slotReg.nPort)))
-                {
-                    pSlotServ = new CRedisServer(slotReg.strHost, slotReg.nPort, m_nClientTimeout, m_nServerTimeout, m_nConnNum);
-                    if (!pSlotServ->IsValid())
-                    {
-                        for (auto pRedisServ : vecRedisServ)
-                            delete pRedisServ;
-                        return false;
-                    }
-                    vecRedisServ.push_back(pSlotServ);
-                }
-                slotReg.pRedisServ = pSlotServ;
-            }
+			for (auto &slotReg : vecSlot)
+			{
+				if (!(pSlotServ = FindServer(vecRedisServ, slotReg.strHost, slotReg.nPort)))
+				{
+					pSlotServ = new CRedisServer(slotReg.strHost, slotReg.nPort, m_nClientTimeout, m_nServerTimeout, m_nConnNum);
+					if (!pSlotServ->IsValid())
+					{
+						for (auto pRedisServ : vecRedisServ)
+							delete pRedisServ;
+						return false;
+					}
+					else
+					{
 
-            CleanServer();
-            std::sort(vecSlot.begin(), vecSlot.end());
-            m_vecRedisServ = vecRedisServ;
-            m_vecSlot = vecSlot;
+					}
+					vecRedisServ.push_back(pSlotServ);
+				}
+				slotReg.pRedisServ = pSlotServ;
+			}
 
+			{
+				std::mutex mutex;
+				mutex.lock();
+				CleanServer();
+				std::sort(vecSlot.begin(), vecSlot.end());
+
+				m_vecRedisServ = vecRedisServ;
+				m_vecSlot = vecSlot;
+				mutex.unlock();
+
+			}
+
+			for (auto serv : m_vecRedisServ)
+			{
+				log_info("LoadClusterSlots [address:", (long long)(&m_vecRedisServ), "][host:", serv->m_strHost, "][port:", serv->m_nPort, "][timeout:", serv->m_nCliTimeout, "/", serv->m_nSerTimeout, "]");
+			}
+			for (auto vec : m_vecSlot)
+			{
+
+				log_info("LoadClusterSlots [address:", (long long)(&m_vecSlot), "][host:", vec.strHost, "][port:", vec.nPort, "][slot:", vec.nStartSlot, "->", vec.nEndSlot, "]");
+			}
 			return true;
         }
     }
@@ -2256,11 +2336,20 @@ int CRedisClient::Exec(CRedisConnection* connection, const std::string &strKey)
 
 CRedisConnection* CRedisClient::AttachConnection(int slot)
 {
-	
-	return FindServer(slot)->FetchConnection();
+	auto server = FindServer(slot);
+	if (nullptr == server)
+	{
+		return nullptr;
+	}
+	return server->FetchConnection();
 }
 
 void CRedisClient::DetachConnection(int slot, CRedisConnection* connection)
 {
-	FindServer(slot)->ReturnConnection(connection);
+	auto server = FindServer(slot);
+	if (nullptr == server)
+	{
+		return;
+	}
+	server->ReturnConnection(connection);
 }
