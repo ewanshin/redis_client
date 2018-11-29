@@ -338,18 +338,16 @@ public:
 	int Time(struct timeval *ptmVal);
 
 	/* interface for transaction */
-	int Watch(const std::string &strKey);
 	int Watch(CRedisConnection* connection, const std::string &strKey);
-	int Multi(const std::string &strKey);
 	int Multi(CRedisConnection* connection, const std::string &strKey);
-	int Exec(const std::string &strKey);
 	int Exec(CRedisConnection* connection, const std::string &strKey);
+	int Unwatch(CRedisConnection* connection, const std::string &strKey);
 
 private:
-    static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);
-    static bool GetValue(redisReply *pReply, std::string &strVal);
-    static bool GetArray(redisReply *pReply, std::vector<std::string> &vecVal);
-    static CRedisServer * FindServer(const std::vector<CRedisServer *> *vecRedisServ, const std::string &strHost, int nPort);
+	static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);
+	static bool GetValue(redisReply *pReply, std::string &strVal);
+	static bool GetArray(redisReply *pReply, std::vector<std::string> &vecVal);
+	static CRedisServer * FindServer(const std::vector<CRedisServer *> *vecRedisServ, const std::string &strHost, int nPort);
 
     void operator()();
     void CleanServer();

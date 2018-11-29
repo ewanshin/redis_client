@@ -13,6 +13,7 @@ private:
     void Test_GetS();
     void Test_Get();
     void Test_Set();
+	void Test_Multi();
 
 private:
 	bool m_bExit;

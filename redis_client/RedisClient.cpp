@@ -779,16 +779,22 @@ void CRedisServer::SetSlave(const std::string &strHost, int nPort)
 
 CRedisConnection * CRedisServer::FetchConnection()
 {
-    CRedisConnection *pRedisConn = nullptr;
-    m_mutexConn.lock();
-    if (!m_queIdleConn.empty())
-    {
-        pRedisConn = m_queIdleConn.front();
-        m_queIdleConn.pop();
-    }
+	CRedisConnection *pRedisConn = nullptr;
+	m_mutexConn.lock();
+	if (!m_queIdleConn.empty())
+	{
+		pRedisConn = m_queIdleConn.front();
+		m_queIdleConn.pop();
+	}
+	else
+	{
+		int a = 0;
+		a++;
+		a++;
+	}
 
-    m_mutexConn.unlock();
-    return pRedisConn;
+	m_mutexConn.unlock();
+	return pRedisConn;
 }
 
 void CRedisServer::ReturnConnection(CRedisConnection *pRedisConn)
@@ -2354,22 +2360,10 @@ bool CRedisClient::InSameNode(const std::string &strKey1, const std::string &str
     return m_bCluster ? FindServer(HASH_SLOT(strKey1)) == FindServer(HASH_SLOT(strKey2)) : true;
 }
 
-int CRedisClient::Watch(const std::string &strKey)
-{
-	std::string command = "watch " + strKey;
-	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
-}
-
 int CRedisClient::Watch(CRedisConnection* connection, const std::string &strKey)
 {
 	std::string command = "watch " + strKey;
 	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
-}
-
-int CRedisClient::Multi(const std::string &strKey)
-{
-	std::string command = "multi ";
-	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
 int CRedisClient::Multi(CRedisConnection* connection, const std::string &strKey)
@@ -2378,27 +2372,34 @@ int CRedisClient::Multi(CRedisConnection* connection, const std::string &strKey)
 	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
-int CRedisClient::Exec(const std::string &strKey)
-{
-	std::string command = "exec";
-	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_MAP(nullptr));
-}
-
 int CRedisClient::Exec(CRedisConnection* connection, const std::string &strKey)
 {
 	std::string command = "exec";
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_MAP(nullptr));
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
+int CRedisClient::Unwatch(CRedisConnection* connection, const std::string &strKey)
+{
+	std::string command = "unwatch ";
+	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
 
 CRedisConnection* CRedisClient::AttachConnection(int slot)
 {
 	auto server = FindServer(slot);
 	if (nullptr == server)
 	{
+		client_log_error("CRedisClient::AttachConnection [slot:", slot, "]");
 		return nullptr;
 	}
-	return server->FetchConnection();
+	//return server->FetchConnection();
+	auto ret = server->FetchConnection();
+	if (nullptr == ret)
+	{
+		client_log_error("CRedisClient::AttachConnection fetch failed [slot:", slot, "]");
+		return nullptr;
+	}
+	return ret;
 }
 
 void CRedisClient::DetachConnection(int slot, CRedisConnection* connection)
