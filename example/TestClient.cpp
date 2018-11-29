@@ -10,7 +10,7 @@ CTestClient::CTestClient()
 
 CTestClient::~CTestClient()
 {
-	spdlog::shutdown();
+//	spdlog::shutdown();
 }
 
 bool CTestClient::PrintResult(const std::string &strCmd, bool bSuccess)
@@ -157,7 +157,8 @@ bool CTestClient::StartTest(const std::string &strHost, int port)
 	console_logger_ = spdlog::stdout_color_mt("console");
 	file_logger_ = spdlog::daily_logger_mt<spdlog::async_factory>("result", "result.log");
 
-	spdlog::set_level(spdlog::level::trace);
+	console_logger_->set_level(spdlog::level::trace);
+	file_logger_->set_level(spdlog::level::trace);
 	log_debug("Logger created");
 	return true;
 }

@@ -175,8 +175,7 @@ public:
 
     std::string GetHost() const { return m_strHost; }
     int GetPort() const { return m_nPort; }
-	//bool IsValid() const { return m_queIdleConn.size() > 0 ? true : false; }
-	bool IsValid() const { return m_queIdleConn->size() > 0 ? true : false; }
+	bool IsValid() const { return m_queIdleConn.size() > 0 ? true : false; }
 
     // for the blocking request
     int ServRequest(CRedisCommand *pRedisCmd);
@@ -189,18 +188,16 @@ private:
     void CleanConn();
 
 private:
-    std::string m_strHost;
-    int m_nPort;
-    int m_nCliTimeout;
-    int m_nSerTimeout;
-    int m_nConnNum;
+	std::string m_strHost;
+	int m_nPort;
+	int m_nCliTimeout;
+	int m_nSerTimeout;
+	int m_nConnNum;
 
-    //std::queue<CRedisConnection *> m_queIdleConn;
-	std::queue<CRedisConnection *>* m_queIdleConn = nullptr;
+    std::queue<CRedisConnection *> m_queIdleConn;
     std::vector<std::pair<std::string, int> > m_vecHosts;
     std::mutex m_mutexConn;
 };
-
 
 class CRedisClient
 {
@@ -352,7 +349,7 @@ private:
     static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);
     static bool GetValue(redisReply *pReply, std::string &strVal);
     static bool GetArray(redisReply *pReply, std::vector<std::string> &vecVal);
-    static CRedisServer * FindServer(const std::vector<CRedisServer *> &vecRedisServ, const std::string &strHost, int nPort);
+    static CRedisServer * FindServer(const std::vector<CRedisServer *> *vecRedisServ, const std::string &strHost, int nPort);
 
     void operator()();
     void CleanServer();
@@ -449,7 +446,9 @@ private:
 	bool m_bExit;
 
 	std::vector<SlotRegion> m_vecSlot;
-	std::vector<CRedisServer *> m_vecRedisServ;
+	//std::vector<CRedisServer *> m_vecRedisServ;
+	//std::atomic<std::vector<SlotRegion>*>		m_vecSlot;
+	std::atomic<std::vector<CRedisServer*>*>	m_vecRedisServ;
 
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
@@ -458,6 +457,34 @@ private:
 	SRWLOCK				m_rwLock;
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
+
+public:
+	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
+	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
+	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
+	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
+	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
+	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
+
+	template<typename ... Args>
+	void client_log(spdlog::level::level_enum level, Args const& ... args)
+	{
+		std::stringstream thread_stream;
+		thread_stream << std::this_thread::get_id();
+		unsigned int thread_id = std::stoull(thread_stream.str());
+
+		std::ostringstream stream;
+		using List = int[];
+		(void)List {
+			0, ((void)(stream << args), 0) ...
+		};
+
+		//console_logger_->log(level, stream.str());
+		//file_logger_->log(level, stream.str());
+		spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+		spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+	}
+
 };
 
 #endif

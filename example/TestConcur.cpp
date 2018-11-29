@@ -145,11 +145,11 @@ void CTestConcur::Test_Set()
 			log_error("connection is null");
 			return;
 		}
-		m_redis.Watch(connection, ssKey.str());
+		//m_redis.Watch(connection, ssKey.str());
 
 		//int nRet = m_redis.Set(ssKey.str(), ssVal.str());
 		int nRet = m_redis.Set(connection, ssKey.str(), ssVal.str());
-		m_redis.Exec(connection, ssKey.str());
+		//m_redis.Exec(connection, ssKey.str());
 		if (nRet == RC_SUCCESS)
 		{
 			//m_mutex.lock();
@@ -178,7 +178,7 @@ void CTestConcur::Test_Set()
 				else
 				{
 					//std::cout << "Get Failed: " << tv.tv_usec << std::endl;
-					log_error("Get Failed: [error:", nRet, "]");
+					log_error("Set Failed: [error:", nRet, "]");
 				}
 				npc = 0;
 			}
