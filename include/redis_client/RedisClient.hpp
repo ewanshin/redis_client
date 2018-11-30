@@ -456,32 +456,32 @@ private:
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 
-public:
-	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
-	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
-	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
-	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
-	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
-	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
-
-	template<typename ... Args>
-	void client_log(spdlog::level::level_enum level, Args const& ... args)
-	{
-		std::stringstream thread_stream;
-		thread_stream << std::this_thread::get_id();
-		unsigned int thread_id = std::stoull(thread_stream.str());
-
-		std::ostringstream stream;
-		using List = int[];
-		(void)List {
-			0, ((void)(stream << args), 0) ...
-		};
-
-		//console_logger_->log(level, stream.str());
-		//file_logger_->log(level, stream.str());
-		spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-		spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-	}
+//public:
+//	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
+//	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
+//	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
+//	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
+//	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
+//	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
+//
+//	template<typename ... Args>
+//	void client_log(spdlog::level::level_enum level, Args const& ... args)
+//	{
+//		std::stringstream thread_stream;
+//		thread_stream << std::this_thread::get_id();
+//		unsigned int thread_id = std::stoull(thread_stream.str());
+//
+//		std::ostringstream stream;
+//		using List = int[];
+//		(void)List {
+//			0, ((void)(stream << args), 0) ...
+//		};
+//
+//		//console_logger_->log(level, stream.str());
+//		//file_logger_->log(level, stream.str());
+//		spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+//		spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+//	}
 
 };
 
