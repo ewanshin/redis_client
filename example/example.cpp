@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include"stdafx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -62,6 +62,9 @@ int main(void)
 			break;
 
 		break;
+
+		if (0 == getchar())
+			return 0;
 	}
 	return 0;
 }

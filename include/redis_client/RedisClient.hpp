@@ -217,6 +217,7 @@ public:
 	int Dump(const std::string &strKey, std::string *pstrVal);
 	int Exists(const std::string &strKey, long *pnVal);
 	int Expire(const std::string &strKey, long nSec, long *pnVal = nullptr);
+	int Expire(CRedisConnection* connection, const std::string &strKey, long nSec, long *pnVal = nullptr);
 	int Expireat(const std::string &strKey, long nTime, long *pnVal = nullptr);
 	int Keys(const std::string &strPattern, std::vector<std::string> *pvecVal);
 	int Persist(const std::string &strKey, long *pnVal = nullptr);
@@ -254,7 +255,9 @@ public:
 	int Set(CRedisConnection* connection, const std::string &strKey, const std::string &strVal, unsigned int expired = 0);
 	int Setbit(const std::string &strKey, long nOffset, bool bVal);
 	int Setex(const std::string &strKey, long nSec, const std::string &strVal);
+	int Setex(CRedisConnection* connection, const std::string &strKey, long nSec, const std::string &strVal);
 	int Setnx(const std::string &strKey, const std::string &strVal);
+	int Setnx(CRedisConnection* connection, const std::string &strKey, const std::string &strVal);
 	int Setrange(const std::string &strKey, long nOffset, const std::string &strVal, long *pnVal = nullptr);
 	int Strlen(const std::string &strKey, long *pnVal);
 
@@ -447,6 +450,7 @@ private:
 	//std::vector<CRedisServer *> m_vecRedisServ;
 	//std::atomic<std::vector<SlotRegion>*>		m_vecSlot;
 	std::atomic<std::vector<CRedisServer*>*>	m_vecRedisServ;
+	std::vector<std::vector<CRedisServer*>*>	m_oldServerInfo;
 
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
@@ -456,32 +460,40 @@ private:
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 
-//public:
-//	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
-//	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
-//	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
-//	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
-//	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
-//	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
-//
-//	template<typename ... Args>
-//	void client_log(spdlog::level::level_enum level, Args const& ... args)
-//	{
-//		std::stringstream thread_stream;
-//		thread_stream << std::this_thread::get_id();
-//		unsigned int thread_id = std::stoull(thread_stream.str());
-//
-//		std::ostringstream stream;
-//		using List = int[];
-//		(void)List {
-//			0, ((void)(stream << args), 0) ...
-//		};
-//
-//		//console_logger_->log(level, stream.str());
-//		//file_logger_->log(level, stream.str());
-//		spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-//		spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-//	}
+public:
+	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
+	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
+	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
+	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
+	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
+	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
+
+	template<typename ... Args>
+	void client_log(spdlog::level::level_enum level, Args const& ... args)
+	{
+		std::stringstream thread_stream;
+		thread_stream << std::this_thread::get_id();
+		unsigned int thread_id = std::stoull(thread_stream.str());
+
+		std::ostringstream stream;
+		using List = int[];
+		(void)List {
+			0, ((void)(stream << args), 0) ...
+		};
+
+		//console_logger_->log(level, stream.str());
+		//file_logger_->log(level, stream.str());
+		auto console = spdlog::get("console");
+		if (nullptr != console.get())
+		{
+			spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+		}
+		auto file = spdlog::get("result");
+		if (nullptr != console.get())
+		{
+			spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+		}
+	}
 
 };
 

@@ -3,7 +3,8 @@
 
 //#define NUM_DEF 150
 //#define NUM_DEF 50
-#define NUM_DEF 0
+//#define NUM_DEF 0
+const int print_interval = 0;
 
 CTestConcur::CTestConcur()
 {
@@ -15,7 +16,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 
 
 	//if (!m_redis.Initialize(strHost, port, 3, 3, 20))
-	if (!m_redis.Initialize(strHost, port, 3, 3, 50))
+	if (!m_redis.Initialize(strHost, port, 3, 3, 20))
 	{
 		log_error("Connect to redis failed [ip:", strHost, "][port:", port, "]");
 		return false;
@@ -30,7 +31,7 @@ bool CTestConcur::StartTest(const std::string &strHost, int port)
 	m_bExit = false;
 	const int nGetTrdNum = 5;
 	const int nSetTrdNum = 5;
-	const int nMutliTrdNum = 5;
+	const int nMutliTrdNum = 1;
 	//const int nGetTrdNum = 1;
 	//const int nSetTrdNum = 1;
 	//const int nMutliTrdNum = 1;
@@ -91,6 +92,7 @@ void CTestConcur::Test_Get()
 	//struct timezone tz;
 
 	int nIndex = 1;
+	int test_count = 0;
 	int npc = 0;
 	while (!m_bExit)
 	{
@@ -101,18 +103,23 @@ void CTestConcur::Test_Get()
 		if (nRet == RC_SUCCESS)
 		{
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
+			if (++npc > print_interval)
 			{
 				log_trace("Get OK [key:", ss.str(), "][value:", strVal, "]");
 				npc = 0;
 			}
+			++test_count;
 			m_mutex.unlock();
+			if (150 < test_count)
+			{
+				return;
+			}
 		}
 		else
 		{
 			//gettimeofday(&tv, &tz);
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
+			if (++npc > print_interval)
 			{
 				if (nRet == RC_NO_RESOURCE)
 				{
@@ -137,6 +144,7 @@ void CTestConcur::Test_Set()
 {
 	int nCounter = 2;
 	int nIndex = 1;
+	int test_count = 0;
 	int npc = 0;
 	//struct timeval tv;
 	//struct timezone tz;
@@ -151,7 +159,7 @@ void CTestConcur::Test_Set()
 		if (nRet == RC_SUCCESS)
 		{
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
+			if (++npc > print_interval)
 			{
 				auto end_time = std::chrono::system_clock::now();
 				std::chrono::duration<double, std::ratio<1, 10>> diff;
@@ -159,14 +167,20 @@ void CTestConcur::Test_Set()
 				log_debug("Set OK [key:", ssKey.str(), "][value:", ssVal.str(), "][Time:", diff.count(), "ms]");
 				npc = 0;
 			}
+			++test_count;
 			m_mutex.unlock();
+			if (150 < test_count)
+			{
+				return;
+			}
+
 		}
 		else
 		{
 			//gettimeofday(&tv, &tz);
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
-			{
+			if (++npc > print_interval)
+			{	
 				if (nRet == RC_NO_RESOURCE)
 				{
 					log_error("No resource ");
@@ -190,6 +204,7 @@ void CTestConcur::Test_Multi()
 {
 	int nCounter = 2;
 	int nIndex = 1;
+	int test_count = 0;
 	int npc = 0;
 	//struct timeval tv;
 	//struct timezone tz;
@@ -239,16 +254,22 @@ void CTestConcur::Test_Multi()
 		if (nRet == RC_SUCCESS)
 		{
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
+			++test_count;
+			if (++npc > print_interval)
 			{
 				auto end_time = std::chrono::system_clock::now();
 				std::chrono::duration<double, std::ratio<1, 10>> diff;
 				diff = end_time - start_time;
 				//std::chrono::time_point<std::chrono::system_clock> end_time(std::chrono::system_clock::now());
-				log_debug("Multi OK [key:", ssKey.str(), "][value:", ssVal.str(), "][Time:", diff.count(), "ms]");
+				log_debug("Multi OK [count:", test_count, "][key:", ssKey.str(), "][value:", ssVal.str(), "][Time:", diff.count(), "ms]");
 				npc = 0;
 			}
 			m_mutex.unlock();
+			if (150 < test_count)
+			{
+				return;
+			}
+
 		}
 		else
 		{
@@ -257,7 +278,7 @@ void CTestConcur::Test_Multi()
 
 			//gettimeofday(&tv, &tz);
 			m_mutex.lock();
-			if (++npc > NUM_DEF)
+			if (++npc > print_interval)
 			{
 				if (nRet == RC_NO_RESOURCE)
 				{
