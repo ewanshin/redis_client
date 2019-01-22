@@ -1,4 +1,7 @@
 redis_client windows version
+based on shawn246/redis_client
+remove pipeline and add multi/exec support ( add connection pool  )
+
 
 # Description
 
