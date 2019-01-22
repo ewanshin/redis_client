@@ -30,7 +30,6 @@
 lib/
 redis_client.v12.suo
 redis_client.sdf
-Debug/
 *.opensdf
 example/tmp/
 redis_client/tmp/
@@ -39,3 +38,4 @@ redis_client/tmp/
 *.ipch
 *.opendb
 *.db
+x64/
