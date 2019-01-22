@@ -1,4 +1,3 @@
-#include"stdafx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -12,6 +11,8 @@
 #include "TestHash.hpp"
 #include "TestZset.hpp"
 #include "TestConcur.hpp"
+#include "TestMulti.hpp"
+
 #ifdef HIREDIS_WIN
 #define snprintf sprintf_s
 #endif
@@ -57,11 +58,13 @@ int main(void)
 		if (!testZset.StartTest(strHost, port))
 			break;*/
 
-		CTestConcur testConcur;
-		if (!testConcur.StartTest(strHost, port))
-			break;
+		//CTestConcur testConcur;
+		//if (!testConcur.StartTest(strHost, port))
+		//	break;
 
-		break;
+		CTestMulti testMulti;
+		if (!testMulti.StartTest(strHost, port))
+			break;
 
 		if (0 == getchar())
 			return 0;

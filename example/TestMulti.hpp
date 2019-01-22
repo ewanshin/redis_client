@@ -1,18 +1,16 @@
-#ifndef TEST_CONCUR_H
-#define TEST_CONCUR_H
+#ifndef _TEST_MULTI_H_
+#define _TEST_MULTI_H_
 
 #include "TestClient.hpp"
 #include <spdlog/spdlog.h>
-class CTestConcur : public CTestClient
+class CTestMulti : public CTestClient
 {
 public:
-    CTestConcur();
+	CTestMulti();
 	virtual bool StartTest(const std::string &strHost, int port);
 
 private:
-    void Test_GetS();
-    void Test_Get();
-    void Test_Set();
+	void Test_Multi();
 
 private:
 	bool m_bExit;

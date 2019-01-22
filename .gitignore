@@ -35,7 +35,7 @@ Debug/
 example/tmp/
 redis_client/tmp/
 *.pdb
+.vs/redis_client/v14/.suo
+*.ipch
 *.opendb
 *.db
-.vs/redis_client/v14/.suo
-ipch/

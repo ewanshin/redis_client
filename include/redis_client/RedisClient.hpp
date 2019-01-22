@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <string.h>
 #include <synchapi.h>
-#include <spdlog/spdlog.h>
+#include <atomic>
 
 #define RC_RESULT_EOF       5
 #define RC_NO_EFFECT        4
@@ -39,6 +39,37 @@
 typedef std::function<int (redisReply *)> TFuncFetch;
 typedef std::function<int (int, redisReply *)> TFuncConvert;
 
+class RedisResult
+{
+public:
+	RedisResult()
+	{
+		Clear();
+	}
+	enum Type
+	{
+		NIL = 0,
+		INTEGER,
+		STRING,
+		ARRAY,
+	};
+
+	void Clear()
+	{
+		type = NIL;
+		memset(m_strVal, '\0', 1024);
+		//m_stringVal.clear();
+		m_llVal = 0;
+		m_arrayVal.clear();
+
+	}
+
+	Type type = NIL;
+	//std::string					m_stringVal;
+	char						m_strVal[1024];
+	long						m_llVal = 0;
+	std::vector<RedisResult>	m_arrayVal;
+};
 
 class CSafeLock
 {
@@ -197,6 +228,7 @@ private:
     std::queue<CRedisConnection *> m_queIdleConn;
     std::vector<std::pair<std::string, int> > m_vecHosts;
     std::mutex m_mutexConn;
+	std::condition_variable _wait;
 };
 
 class CRedisClient
@@ -214,6 +246,7 @@ public:
 
 	/* interfaces for generic */
 	int Del(const std::string &strKey, long *pnVal = nullptr);
+	int Del(CRedisConnection* connection, const std::string &strKey, long *pnVal = nullptr);
 	int Dump(const std::string &strKey, std::string *pstrVal);
 	int Exists(const std::string &strKey, long *pnVal);
 	int Expire(const std::string &strKey, long nSec, long *pnVal = nullptr);
@@ -242,6 +275,7 @@ public:
 	int Decr(const std::string &strKey, long *pnVal = nullptr);
 	int Decrby(const std::string &strKey, long nDecr, long *pnVal = nullptr);
 	int Get(const std::string &strKey, std::string *pstrVal);
+	int Get(CRedisConnection* connection, const std::string &strKey, std::string *pstrVal);
 	int Getbit(const std::string &strKey, long nOffset, long *pnVal);
 	int Getrange(const std::string &strKey, long nStart, long nEnd, std::string *pstrVal);
 	int Getset(const std::string &strKey, std::string *pstrVal);
@@ -343,8 +377,9 @@ public:
 	/* interface for transaction */
 	int Watch(CRedisConnection* connection, const std::string &strKey);
 	int Multi(CRedisConnection* connection, const std::string &strKey);
-	int Exec(CRedisConnection* connection, const std::string &strKey);
+	int Exec(CRedisConnection* connection, const std::string &strKey, OUT RedisResult* result);
 	int Unwatch(CRedisConnection* connection, const std::string &strKey);
+	int Discard(CRedisConnection* connection, const std::string &strKey);
 
 private:
 	static bool ConvertToMapInfo(const std::string &strVal, std::map<std::string, std::string> &mapVal);
@@ -362,13 +397,13 @@ private:
     bool LoadClusterSlots();
     bool WaitForRefresh();
     int Execute(CRedisCommand *pRedisCmd);
-	int Execute(CRedisConnection* connection, CRedisCommand *pRedisCmd);
+	int ExecutePool(CRedisConnection* connection, CRedisCommand *pRedisCmd);
     int SimpleExecute(CRedisCommand *pRedisCmd);
 	int SimpleExecute(CRedisConnection* connection, CRedisCommand *pRedisCmd);
 
     int ExecuteImpl(const std::string &strCmd, int nSlot,
-                   TFuncFetch funcFetch, TFuncConvert funcConv = FUNC_DEF_CONV);
-	int ExecuteImpl(CRedisConnection* connection, const std::string &strCmd, int nSlot,
+		TFuncFetch funcFetch, TFuncConvert funcConv = FUNC_DEF_CONV);
+	int ExecuteImplPool(CRedisConnection* connection, const std::string &strCmd, int nSlot,
 		TFuncFetch funcFetch, TFuncConvert funcConv = FUNC_DEF_CONV);
 
   //  template <typename P>
@@ -460,41 +495,43 @@ private:
 	std::condition_variable_any m_condAny;
 	std::thread *m_pThread;
 
-public:
-	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
-	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
-	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
-	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
-	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
-	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
-
-	template<typename ... Args>
-	void client_log(spdlog::level::level_enum level, Args const& ... args)
-	{
-		std::stringstream thread_stream;
-		thread_stream << std::this_thread::get_id();
-		unsigned int thread_id = std::stoull(thread_stream.str());
-
-		std::ostringstream stream;
-		using List = int[];
-		(void)List {
-			0, ((void)(stream << args), 0) ...
-		};
-
-		//console_logger_->log(level, stream.str());
-		//file_logger_->log(level, stream.str());
-		auto console = spdlog::get("console");
-		if (nullptr != console.get())
-		{
-			spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-		}
-		auto file = spdlog::get("result");
-		if (nullptr != console.get())
-		{
-			spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
-		}
-	}
-
+//#ifdef _DEBUG
+//public:
+//	template<typename ... Args>	inline void client_log_trace(Args const& ... args) { client_log(spdlog::level::trace, args...); }
+//	template<typename ... Args>	inline void client_log_debug(Args const& ... args) { client_log(spdlog::level::debug, args...); }
+//	template<typename ... Args>	inline void client_log_info(Args const& ... args) { client_log(spdlog::level::info, args...); }
+//	template<typename ... Args>	inline void client_log_warn(Args const& ... args) { client_log(spdlog::level::warn, args...); }
+//	template<typename ... Args>	inline void client_log_error(Args const& ... args) { client_log(spdlog::level::err, args...); }
+//	template<typename ... Args>	inline void client_log_critical(Args const& ... args) { client_log(spdlog::level::critical, args...); }
+//
+//	template<typename ... Args>
+//	void client_log(spdlog::level::level_enum level, Args const& ... args)
+//	{
+//		std::stringstream thread_stream;
+//		thread_stream << std::this_thread::get_id();
+//		unsigned int thread_id = std::stoull(thread_stream.str());
+//
+//		std::ostringstream stream;
+//		using List = int[];
+//		(void)List {
+//			0, ((void)(stream << args), 0) ...
+//		};
+//
+//		//console_logger_->log(level, stream.str());
+//		//file_logger_->log(level, stream.str());
+//		auto console = spdlog::get("console");
+//		if (nullptr != console.get())
+//		{
+//			spdlog::get("console")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+//		}
+//		auto file = spdlog::get("result");
+//		if (nullptr != console.get())
+//		{
+//			spdlog::get("result")->log(level, "[thread:" + thread_stream.str() + "] " + stream.str());
+//		}
+//	}
+//
+//#endif
 };
 
 #endif

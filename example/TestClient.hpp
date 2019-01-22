@@ -46,7 +46,7 @@ public:
 	{
 		std::stringstream thread_stream;
 		thread_stream << std::this_thread::get_id();
-		unsigned int thread_id = std::stoull(thread_stream.str());
+		unsigned int thread_id = std::stoul(thread_stream.str());
 
 		std::ostringstream stream;
 		using List = int[];

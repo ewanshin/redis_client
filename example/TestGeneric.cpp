@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "TestGeneric.hpp"
 #include <WinSock2.h>
 

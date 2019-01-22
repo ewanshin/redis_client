@@ -1,8 +1,6 @@
-﻿#include "redis_client/RedisClient.hpp"
-#include <atomic>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/daily_file_sink.h>
-#include <spdlog/async.h>
+﻿#include <atomic>
+#include <iterator>
+#include "redis_client/RedisClient.hpp"
 
 #define BIND_INT(val) std::bind(&FetchInteger, std::placeholders::_1, val)
 #define BIND_STR(val) std::bind(&FetchString, std::placeholders::_1, val)
@@ -11,6 +9,7 @@
 #define BIND_MAP(val) std::bind(&FetchMap, std::placeholders::_1, val)
 #define BIND_TIME(val) std::bind(&FetchTime, std::placeholders::_1, val)
 #define BIND_SLOT(val) std::bind(&FetchSlot, std::placeholders::_1, val)
+#define BIND_MULTI(val) std::bind(&FetchMulti, std::placeholders::_1, val)
 
 // crc16 for computing redis cluster slot
 static const uint16_t crc16Table[256] =
@@ -366,6 +365,73 @@ static inline int FetchSlot(redisReply *pReply, std::vector<SlotRegion> *pvecSlo
     }
     else
         return RC_REPLY_ERR;
+}
+
+static inline int FetchMulti(redisReply *pReply, OUT RedisResult* result)
+{
+	if (nullptr == result)
+	{
+		return RC_REPLY_ERR;
+	}
+
+	//result->type = static_cast<RedisResult::Type>(pReply->type);
+	std::string strVal;
+	long lVal;
+	switch (pReply->type)
+	{
+	case RC_REPLY_ERR:
+		result->type = RedisResult::Type::NIL;
+		return RC_REPLY_ERR;
+		break;
+	case REDIS_REPLY_STATUS:
+	case REDIS_REPLY_STRING:
+		result->type = RedisResult::Type::STRING;
+		if (RC_SUCCESS == FetchString(pReply, &strVal))
+		{
+			sprintf(result->m_strVal, strVal.c_str());
+			return RC_SUCCESS;
+		}
+		else
+		{
+			return RC_REPLY_ERR;
+		}
+		break;
+	case REDIS_REPLY_INTEGER:
+		result->type = RedisResult::Type::INTEGER;
+		if (RC_SUCCESS == FetchInteger(pReply, &lVal))
+		{
+			result->m_llVal = lVal;
+			return RC_SUCCESS;
+		}
+		else
+		{
+			return RC_REPLY_ERR;
+		}
+
+		break;
+	case REDIS_REPLY_ARRAY:
+	{
+		result->type = RedisResult::Type::ARRAY;
+		for (int i = 0; i < pReply->elements; i++)
+		{
+			RedisResult arr;
+			auto data = pReply->element[i];
+			if (RC_SUCCESS == FetchMulti(data, &arr))
+			{
+				result->m_arrayVal.push_back(arr);
+			}
+		}
+		return RC_SUCCESS;
+	}
+	break;
+	case REDIS_REPLY_NIL:
+		result->type = RedisResult::Type::NIL;
+		// NULL이 리턴된 경우이다. 전달되는 데이터는 없다.
+		return RC_SUCCESS;
+	default:
+		break;
+	}
+	return RC_SUCCESS;
 }
 
 // CRedisCommand methods
@@ -765,6 +831,7 @@ void CRedisServer::SetSlave(const std::string &strHost, int nPort)
 CRedisConnection * CRedisServer::FetchConnection()
 {
 	CRedisConnection *pRedisConn = nullptr;
+	
 	m_mutexConn.lock();
 	if (!m_queIdleConn.empty())
 	{
@@ -882,7 +949,7 @@ CRedisClient::~CRedisClient()
 
 bool CRedisClient::Initialize(const std::string &strHost, int nPort, int nClientTimeout, int nServerTimeout, int nConnNum)
 {
-	client_log_trace("CRedisClient::Initialize [host:", strHost, "][port:", nPort, "]");
+	//client_log_trace("CRedisClient::Initialize [host:", strHost, "][port:", nPort, "]");
 	std::string::size_type nPos = strHost.find(':');
 	m_strHost = (nPos == std::string::npos) ? strHost : strHost.substr(0, nPos);
 	m_nPort = (nPos == std::string::npos) ? nPort : atoi(strHost.substr(nPos + 1).c_str());
@@ -933,7 +1000,7 @@ void CRedisClient::operator()()
 				m_condAny.wait(safeLock);
 			}
 			
-			client_log_info("CRedisClient::operator()()");
+			//client_log_info("CRedisClient::operator()()");
 			//m_bValid = m_bCluster ? LoadClusterSlots() : m_vecRedisServ[0]->Initialize();
 			if (true == m_bCluster)
 			{
@@ -961,6 +1028,13 @@ int CRedisClient::Del(const std::string &strKey, long *pnVal)
     //return ExecuteImpl("del", strKey, HASH_SLOT(strKey), ppLine, BIND_INT(pnVal));
 }
 
+int CRedisClient::Del(CRedisConnection* connection, const std::string &strKey, long *pnVal)
+{
+	std::string command = "del " + strKey;
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
+	//return ExecuteImpl("del", strKey, HASH_SLOT(strKey), ppLine, BIND_INT(pnVal));
+}
+
 int CRedisClient::Dump(const std::string &strKey, std::string *pstrVal)
 {
 	std::string command = "dump " + strKey;
@@ -985,7 +1059,7 @@ int CRedisClient::Expire(const std::string &strKey, long nSec, long *pnVal)
 int CRedisClient::Expire(CRedisConnection* connection, const std::string &strKey, long nSec, long *pnVal)
 {
 	std::string command = "expire " + strKey + " " + std::to_string(nSec);
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_INT(pnVal));
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 	//return ExecuteImpl("expire", strKey, ConvertToString(nSec), HASH_SLOT(strKey), ppLine, BIND_INT(pnVal));
 }
 
@@ -1220,6 +1294,13 @@ int CRedisClient::Get(const std::string &strKey, std::string *pstrVal)
     //return ExecuteImpl("get", strKey, HASH_SLOT(strKey), ppLine, BIND_STR(pstrVal));
 }
 
+int CRedisClient::Get(CRedisConnection* connection, const std::string &strKey, std::string *pstrVal)
+{
+	std::string command = "get " + strKey;
+	//return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(pstrVal));
+}
+
 int CRedisClient::Getbit(const std::string &strKey, long nOffset, long *pnVal)
 {
 	std::string command = "getbit " + strKey + " " + std::to_string(nOffset);
@@ -1346,7 +1427,7 @@ int CRedisClient::Set(CRedisConnection* connection, const std::string &strKey, c
 		command = "set " + strKey + " " + strVal + " PX " + std::to_string(expired);
 	}
 	//return ExecuteImpl("set", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 }
 
 int CRedisClient::Setbit(const std::string &strKey, long nOffset, bool bVal)
@@ -1366,21 +1447,21 @@ int CRedisClient::Setex(const std::string &strKey, long nSec, const std::string 
 int CRedisClient::Setex(CRedisConnection* connection, const std::string &strKey, long nSec, const std::string &strVal)
 {
 	std::string command = "setex " + strKey + " " + std::to_string(nSec) + " " + strVal;
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 	//return ExecuteImpl("setex", strKey, ConvertToString(nSec), strVal, HASH_SLOT(strKey), ppLine, BIND_STR(nullptr), StuResConv());
 }
 
 int CRedisClient::Setnx(const std::string &strKey, const std::string &strVal)
 {
 	std::string command = "setnx " + strKey + " " + strVal;
-	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_INT(nullptr), IntResConv(RC_OBJ_EXIST));
+	return ExecuteImpl(command, HASH_SLOT(strKey), BIND_INT(nullptr), IntResConv(RC_SUCCESS));
     //return ExecuteImpl("setnx", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_INT(nullptr), IntResConv(RC_OBJ_EXIST));
 }
 
 int CRedisClient::Setnx(CRedisConnection* connection, const std::string &strKey, const std::string &strVal)
 {
 	std::string command = "setnx " + strKey + " " + strVal;
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 	//return ExecuteImpl("setnx", strKey, strVal, HASH_SLOT(strKey), ppLine, BIND_INT(nullptr), IntResConv(RC_OBJ_EXIST));
 }
 
@@ -2002,16 +2083,16 @@ int CRedisClient::ExecuteImpl(const std::string &strCmd, int nSlot, TFuncFetch f
     return nRet;
 }
 
-int CRedisClient::ExecuteImpl(CRedisConnection* connection, const std::string &strCmd, int nSlot, TFuncFetch funcFetch, TFuncConvert funcConv)
+int CRedisClient::ExecuteImplPool(CRedisConnection* connection, const std::string &strCmd, int nSlot, TFuncFetch funcFetch, TFuncConvert funcConv)
 {
 	CRedisCommand *pRedisCmd = new CRedisCommand(strCmd);
 	//    pRedisCmd->SetArgs();
 	pRedisCmd->SetSlot(nSlot);
 	pRedisCmd->SetConvFunc(funcConv);
-	int nRet = Execute(connection, pRedisCmd);
+	int nRet = ExecutePool(connection, pRedisCmd);
 	if (nRet != RC_SUCCESS)
 	{
-		client_log_error("CRedisClient::ExecuteImpl execute failed");
+		//client_log_error("CRedisClient::ExecuteImpl execute failed");
 	}
 	if (nRet == RC_SUCCESS)
 	{
@@ -2067,7 +2148,7 @@ bool CRedisClient::LoadClusterSlots()
 {
 	auto server = m_vecRedisServ.load();
 
-	client_log_trace("CRedisClient::LoadClusterSlots [size:", static_cast<int>(server->size()), "]");
+	//client_log_trace("CRedisClient::LoadClusterSlots [size:", static_cast<int>(server->size()), "]");
     std::vector<CRedisServer *>* vecRedisServ = new std::vector<CRedisServer*>;
     std::vector<SlotRegion> vecSlot;
     CRedisCommand redisCmd("cluster slots");
@@ -2083,11 +2164,11 @@ bool CRedisClient::LoadClusterSlots()
 			for (auto itr = vecRedisServ->begin(); itr != vecRedisServ->end(); ++itr)
 			{
 				CRedisServer* pRedisServ = *itr;
-				client_log_info("CRedisClient::LoadClusterSlots server not valid [host:", pRedisServ->m_strHost, "][port:", pRedisServ->m_nPort, "]");
+				//client_log_info("CRedisClient::LoadClusterSlots server not valid [host:", pRedisServ->m_strHost, "][port:", pRedisServ->m_nPort, "]");
 				delete pRedisServ;
 				pRedisServ = nullptr;
 			}
-			client_log_error("CRedisClient::LoadClusterSlots vecRedisServ not valid server");
+			//client_log_error("CRedisClient::LoadClusterSlots vecRedisServ not valid server");
             return false;
         }
 
@@ -2095,10 +2176,10 @@ bool CRedisClient::LoadClusterSlots()
 		if (pRedisServ->ServRequest(&redisCmd) == RC_SUCCESS &&
 			redisCmd.FetchResult(BIND_SLOT(&vecSlot)) == RC_SUCCESS)
 		{
-			client_log_info("LoadClusterSlots cluster slot [size:", vecSlot.size(), "]");
+			//client_log_info("LoadClusterSlots cluster slot [size:", vecSlot.size(), "]");
 			if (vecSlot.size() == 0)
 			{
-				client_log_error("LoadClusterSlots size is 0");
+				//client_log_error("LoadClusterSlots size is 0");
 				return false;
 			}
 			for (auto &slotReg : vecSlot)
@@ -2116,7 +2197,7 @@ bool CRedisClient::LoadClusterSlots()
 							//delete pRedisServ;
 							//vecRedisServ->erase(itr);
 						}
-						client_log_error("CRedisClient::LoadClusterSlots FindSerrver not valid server");
+						//client_log_error("CRedisClient::LoadClusterSlots FindSerrver not valid server");
 						return false;
 					}
 					else
@@ -2142,21 +2223,21 @@ bool CRedisClient::LoadClusterSlots()
 			}
 
 			//for (auto serv : m_vecRedisServ)
-			auto server = m_vecRedisServ.load();
-			for (std::vector<CRedisServer*>::iterator itr = server->begin(); itr != server->end(); ++itr)
-			{
-				CRedisServer* serv = *itr;
-				client_log_info("LoadClusterSlots [address:", (long long)(&m_vecRedisServ), "][host:", serv->m_strHost, "][port:", serv->m_nPort, "][timeout:", serv->m_nCliTimeout, "/", serv->m_nSerTimeout, "]");
-			}
-			for (auto vec : m_vecSlot)
-			{
+			//auto server = m_vecRedisServ.load();
+			//for (std::vector<CRedisServer*>::iterator itr = server->begin(); itr != server->end(); ++itr)
+			//{
+			//	CRedisServer* serv = *itr;
+			//	client_log_info("LoadClusterSlots [address:", (long long)(&m_vecRedisServ), "][host:", serv->m_strHost, "][port:", serv->m_nPort, "][timeout:", serv->m_nCliTimeout, "/", serv->m_nSerTimeout, "]");
+			//}
+			//for (auto vec : m_vecSlot)
+			//{
 
-				client_log_info("LoadClusterSlots [address:", (long long)(&m_vecSlot), "][host:", vec.strHost, "][port:", vec.nPort, "][slot:", vec.nStartSlot, "->", vec.nEndSlot, "]");
-			}
+			//	client_log_info("LoadClusterSlots [address:", (long long)(&m_vecSlot), "][host:", vec.strHost, "][port:", vec.nPort, "][slot:", vec.nStartSlot, "->", vec.nEndSlot, "]");
+			//}
 			return true;
         }
     }
-	client_log_error("CRedisClient::LoadClusterSlots cout is 0");
+	//client_log_error("CRedisClient::LoadClusterSlots cout is 0");
     return false;
 }
 
@@ -2220,18 +2301,18 @@ int CRedisClient::Execute(CRedisCommand *pRedisCmd)
     return nRet;
 }
 
-int CRedisClient::Execute(CRedisConnection* connection, CRedisCommand *pRedisCmd)
+int CRedisClient::ExecutePool(CRedisConnection* connection, CRedisCommand *pRedisCmd)
 {
 	if (!m_bValid)
 	{
-		client_log_error("CRedisClient::Execute not valid");
+		//client_log_error("CRedisClient::Execute not valid");
 		return RC_RQST_ERR;
 	}
 
 	int nRet = SimpleExecute(connection, pRedisCmd);
 	if (nRet != RC_SUCCESS)
 	{
-		client_log_error("CRedisClient::Execute SimpleExecute failed");
+		//client_log_error("CRedisClient::Execute SimpleExecute failed");
 	}
 	if (!m_bCluster)
 	{
@@ -2269,7 +2350,7 @@ int CRedisClient::SimpleExecute(CRedisConnection* connection, CRedisCommand *pRe
 	if (!safeLock.ReadLock() || !m_bValid)
 	{
 		safeLock.ReadUnlock();
-		client_log_error("CRedisClient::SimpleExecute not valid or read lock");
+		//client_log_error("CRedisClient::SimpleExecute not valid or read lock");
 		return RC_RQST_ERR;
 	}
 
@@ -2277,7 +2358,7 @@ int CRedisClient::SimpleExecute(CRedisConnection* connection, CRedisCommand *pRe
 	safeLock.ReadUnlock();
 	if (!pRedisServ)
 	{
-		client_log_error("CRedisClient::SimpleExecute pRedisServ not valid");
+		//client_log_error("CRedisClient::SimpleExecute pRedisServ not valid");
 	}
 	return pRedisServ ? pRedisServ->ServRequest(connection, pRedisCmd) : RC_RQST_ERR;
 }
@@ -2361,25 +2442,31 @@ bool CRedisClient::InSameNode(const std::string &strKey1, const std::string &str
 int CRedisClient::Watch(CRedisConnection* connection, const std::string &strKey)
 {
 	std::string command = "watch " + strKey;
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
 int CRedisClient::Multi(CRedisConnection* connection, const std::string &strKey)
 {
 	std::string command = "multi ";
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr), StuResConv());
 }
 
-int CRedisClient::Exec(CRedisConnection* connection, const std::string &strKey)
+int CRedisClient::Exec(CRedisConnection* connection, const std::string &strKey, OUT RedisResult* result)
 {
 	std::string command = "exec";
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_MULTI(result));
 }
 
 int CRedisClient::Unwatch(CRedisConnection* connection, const std::string &strKey)
 {
 	std::string command = "unwatch ";
-	return ExecuteImpl(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
+}
+
+int CRedisClient::Discard(CRedisConnection* connection, const std::string &strKey)
+{
+	std::string command = "discard ";
+	return ExecuteImplPool(connection, command, HASH_SLOT(strKey), BIND_STR(nullptr));
 }
 
 CRedisConnection* CRedisClient::AttachConnection(int slot)
@@ -2387,14 +2474,14 @@ CRedisConnection* CRedisClient::AttachConnection(int slot)
 	auto server = FindServer(slot);
 	if (nullptr == server)
 	{
-		client_log_error("CRedisClient::AttachConnection [slot:", slot, "]");
+		//client_log_error("CRedisClient::AttachConnection [slot:", slot, "]");
 		return nullptr;
 	}
 	//return server->FetchConnection();
 	auto ret = server->FetchConnection();
 	if (nullptr == ret)
 	{
-		client_log_error("CRedisClient::AttachConnection fetch failed [slot:", slot, "]");
+		//client_log_error("CRedisClient::AttachConnection fetch failed [slot:", slot, "]");
 		return nullptr;
 	}
 	return ret;

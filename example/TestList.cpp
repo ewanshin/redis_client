@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "TestList.hpp"
 
 CTestList::CTestList()
