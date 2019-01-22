@@ -188,7 +188,7 @@ void CTestMulti::Test_Multi()
 				diff = end_time - start_time;
 				//std::chrono::time_point<std::chrono::system_clock> end_time(std::chrono::system_clock::now());
 
-				if ((long)1 == result.m_arrayVal[2].m_llVal && (long)1 == result.m_arrayVal[3].m_llVal)
+				if ((long)1 == result.m_arrayVal[3].m_llVal && false == std::string(result.m_arrayVal[4].m_strVal).empty())
 				{
 					log_debug("Exec OK [count:", test_count, "][Time:", diff.count(), "s][string:", result.m_arrayVal[3].m_strVal, "]");
 				}
