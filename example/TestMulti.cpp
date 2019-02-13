@@ -54,9 +54,10 @@ void CTestMulti::Test_Multi()
 		ssVal << "value_" << nCounter++;
 
 		auto key = m_redis.HASH_SLOT(ssKey.str());
+		auto connection = m_redis.AttachConnection(key);
 
 		log_trace("set " + ssKey.str() + " " + ssVal.str());
-		nRet = m_redis.Set(ssKey.str(), ssVal.str());
+		nRet = m_redis.Set(connection, ssKey.str(), ssVal.str());
 		if (RC_SUCCESS != nRet)
 		{
 			log_error("set failed [error:", nRet, "]");
@@ -64,14 +65,15 @@ void CTestMulti::Test_Multi()
 		}
 
 		log_trace("del " + ssKey.str());
-		nRet = m_redis.Del(ssKey.str());
+		RedisResult result;
+		nRet = m_redis.Del(connection, ssKey.str(), &result);
 		if (RC_SUCCESS != nRet)
 		{
 			log_error("del failed [error:", nRet, "]");
 			return;
 		}
 
-		auto connection = m_redis.AttachConnection(key);
+
 		if (nullptr == connection)
 		{
 			log_error("attach connection is null");
@@ -131,7 +133,7 @@ void CTestMulti::Test_Multi()
 		}
 
 		log_trace("set " + ssKey.str() + " " + ssVal.str());
-		nRet = m_redis.Set(connection, ssKey.str(), ssVal.str(), 1000);
+		nRet = m_redis.Setnx(connection, ssKey.str(), ssVal.str());
 		if (nRet != RC_SUCCESS)
 		{
 			log_error("set failed [error:", nRet, "]");
@@ -162,8 +164,8 @@ void CTestMulti::Test_Multi()
 		}
 
 		log_trace("del " + ssKey.str());
-		nRet = m_redis.Del(connection, ssKey.str());
-		if (RC_SUCCESS != nRet)
+		nRet = m_redis.Del(connection, ssKey.str(), &result);
+		if (RC_SUCCESS != nRet || 0 != strcmp("QUEUED", result.m_strVal))
 		{
 			log_error("del failed [error:", nRet, "]");
 			m_redis.Unwatch(connection, ssKey.str());
@@ -171,7 +173,6 @@ void CTestMulti::Test_Multi()
 			return;
 		}
 		log_trace("exec ");
-		RedisResult result;
 		nRet = m_redis.Exec(connection, ssKey.str(), &result);
 		if (nRet == RC_SUCCESS && REDIS_REPLY_NIL != result.type)
 		{
