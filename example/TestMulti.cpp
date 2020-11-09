@@ -22,7 +22,7 @@ bool CTestMulti::StartTest(const std::string &strHost, int port)
 	}
 
 	m_bExit = false;
-	const int nMutliTrdNum = 1;
+	const int nMutliTrdNum = 10;
 	std::thread *pthreadMulti[nMutliTrdNum] = { nullptr };
 	for (int i = 0; i < nMutliTrdNum; ++i)
 		pthreadMulti[i] = new std::thread(std::bind(&CTestMulti::Test_Multi, this));
@@ -55,6 +55,10 @@ void CTestMulti::Test_Multi()
 
 		auto key = m_redis.HASH_SLOT(ssKey.str());
 		auto connection = m_redis.AttachConnection(key);
+		if (nullptr == connection)
+		{
+			return;
+		}
 
 		log_trace("set " + ssKey.str() + " " + ssVal.str());
 		nRet = m_redis.Set(connection, ssKey.str(), ssVal.str());
@@ -145,6 +149,7 @@ void CTestMulti::Test_Multi()
 		log_trace("expire " + ssKey.str() + " 3");
 		long expire_return_val = 0;
 		nRet = m_redis.Expire(connection, ssKey.str(), 3, &expire_return_val);
+
 		if (nRet != RC_SUCCESS)
 		{
 			log_error("expire failed [error:", nRet, "]");
@@ -184,24 +189,28 @@ void CTestMulti::Test_Multi()
 			++test_count;
 			if (++npc > print_interval)
 			{
-				auto end_time = std::chrono::system_clock::now();
-				std::chrono::duration<double, std::ratio<1, 10>> diff;
-				diff = end_time - start_time;
-				//std::chrono::time_point<std::chrono::system_clock> end_time(std::chrono::system_clock::now());
+				if (result.m_arrayVal.size() > 0)
+				{
+					auto end_time = std::chrono::system_clock::now();
+					std::chrono::duration<double, std::ratio<1, 10>> diff;
+					diff = end_time - start_time;
+					//std::chrono::time_point<std::chrono::system_clock> end_time(std::chrono::system_clock::now());
 
-				if ((long)1 == result.m_arrayVal[3].m_llVal && false == std::string(result.m_arrayVal[4].m_strVal).empty())
-				{
-					log_debug("Exec OK [count:", test_count, "][Time:", diff.count(), "s][string:", result.m_arrayVal[3].m_strVal, "]");
-				}
-				else
-				{
-					log_error("Exec failed [count:", test_count, "][value:", result.m_arrayVal[2].m_llVal, "][Time:", diff.count(), "ms]");
+					if ((long)1 == result.m_arrayVal[3].m_llVal && false == std::string(result.m_arrayVal[4].m_strVal).empty())
+					{
+						log_debug("Exec OK [count:", test_count, "][Time:", diff.count(), "s][string:", result.m_arrayVal[3].m_strVal, "]");
+					}
+					else
+					{
+						log_error("Exec failed [count:", test_count, "][value:", result.m_arrayVal[2].m_llVal, "][Time:", diff.count(), "ms]");
+					}
+
 				}
 
 				npc = 0;
 			}
 			m_mutex.unlock();
-			if (10 < test_count)
+			if (5000 < test_count)
 			{
 				return;
 			}

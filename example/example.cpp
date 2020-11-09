@@ -1,7 +1,7 @@
+#include <WinSock2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-
 #include <hiredis/hiredis.h>
 #include "TestBase.hpp"
 #include "TestGeneric.hpp"

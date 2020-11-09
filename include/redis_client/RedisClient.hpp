@@ -36,6 +36,8 @@
 
 #define FUNC_DEF_CONV       [](int nRet, redisReply *) { return nRet; }
 
+//#define ENV_APPLY
+
 typedef std::function<int (redisReply *)> TFuncFetch;
 typedef std::function<int (int, redisReply *)> TFuncConvert;
 
@@ -389,6 +391,7 @@ private:
 
     void operator()();
     void CleanServer();
+	void CleanOldServer();
     CRedisServer * FindServer(int nSlot) const;
     bool InSameNode(const std::string &strKey1, const std::string &strKey2);
     CRedisServer * GetMatchedServer(const CRedisCommand *pRedisCmd) const;
@@ -470,6 +473,34 @@ private:
     //        delete pRedisCmd;
     //    return nRet;
     //}
+private:
+	struct ServerInfoQ
+	{
+		std::int64_t _create_time;
+		std::vector<CRedisServer*>* _vec_serverinfo = nullptr;
+		ServerInfoQ() : _vec_serverinfo(nullptr)
+		{
+			_create_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		}
+		explicit ServerInfoQ(std::vector<CRedisServer*>* serverinfo) : _vec_serverinfo(serverinfo)
+		{
+			_create_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		}
+		~ServerInfoQ()
+		{
+			delete _vec_serverinfo;
+			_vec_serverinfo = nullptr;
+		}
+		bool Expired() const
+		{
+			std::int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+			if (5*60*1000 < now - _create_time)	// 5 minutes
+			{
+				return true;
+			}
+			return false;
+		}
+	};
 
 private:
 	std::string m_strHost;
@@ -482,10 +513,8 @@ private:
 	bool m_bExit;
 
 	std::vector<SlotRegion> m_vecSlot;
-	//std::vector<CRedisServer *> m_vecRedisServ;
-	//std::atomic<std::vector<SlotRegion>*>		m_vecSlot;
 	std::atomic<std::vector<CRedisServer*>*>	m_vecRedisServ;
-	std::vector<std::vector<CRedisServer*>*>	m_oldServerInfo;
+	std::list<ServerInfoQ>	m_oldServerInfoList;
 
 #if defined(linux) || defined(__linux) || defined(__linux__)
 	pthread_rwlockattr_t m_rwAttr;
