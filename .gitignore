@@ -39,3 +39,4 @@ redis_client/tmp/
 *.opendb
 *.db
 x64/
+hiredis/

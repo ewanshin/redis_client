@@ -23,7 +23,7 @@ const char *const AUTH_CMD = NULL;
 
 int main(void) 
 {
-	std::string strHost = "10.75.17.135";
+	std::string strHost = "127.0.0.1";
 	unsigned int port = 30001;
 	//std::string strHost = "10.113.113.36";	
 	//unsigned int port = 17001;

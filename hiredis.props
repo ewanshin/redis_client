@@ -1,11 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <HIREDIS_PATH>$(SolutionDir)hiredis\</HIREDIS_PATH>
+  </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(SolutionDir)hiredis\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)hiredis\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(HIREDIS_PATH)include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(HIREDIS_PATH)lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup />
-  <ItemGroup />
+  <ItemGroup>
+    <BuildMacro Include="HIREDIS_PATH">
+      <Value>$(HIREDIS_PATH)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
 </Project>
